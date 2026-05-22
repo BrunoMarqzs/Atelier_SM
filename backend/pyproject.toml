@@ -1,0 +1,42 @@
+[project]
+name = "atelier-sibele-marques-backend"
+version = "0.1.0"
+description = "Backend FastAPI para o Atelier Sibele Marques."
+requires-python = ">=3.11"
+dependencies = [
+  "alembic>=1.13.0",
+  "asyncpg>=0.29.0",
+  "fastapi>=0.111.0",
+  "pydantic>=2.7.0",
+  "pydantic-settings>=2.2.0",
+  "python-multipart>=0.0.9",
+  "sqlalchemy>=2.0.0",
+  "uvicorn[standard]>=0.30.0"
+]
+
+[project.optional-dependencies]
+dev = [
+  "httpx>=0.27.0",
+  "pytest>=8.2.0",
+  "pytest-asyncio>=0.23.0",
+  "ruff>=0.5.0"
+]
+
+[project.scripts]
+atelier-db-seed = "app.commands.seed_database:main"
+atelier-db-setup = "app.commands.setup_database:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+exclude = ["migrations*", "tests*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

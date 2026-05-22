@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "Atelier Sibele Marques",
+    "slug": "atelier-sibele-marques",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "scheme": "atelier-sibele",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#FBF7F3"
+      }
+    },
+    "web": {
+      "bundler": "metro",
+      "favicon": "./public/icons/icon-192.svg",
+      "name": "Atelier Sibele Marques",
+      "shortName": "Atelier Sibele",
+      "themeColor": "#FBF7F3",
+      "backgroundColor": "#FBF7F3"
+    },
+    "plugins": ["expo-image-picker"]
+  }
+}

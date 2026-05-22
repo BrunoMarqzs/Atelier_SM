@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192" role="img" aria-label="Atelier Sibele Marques">
+  <rect width="192" height="192" rx="48" fill="#FBF7F3"/>
+  <circle cx="96" cy="96" r="68" fill="#FFFDFC" stroke="#D8B9A9" stroke-width="3"/>
+  <path d="M61 128c14-16 23-37 26-63 1-8 17-8 18 0 3 26 12 47 26 63" fill="none" stroke="#8E5F55" stroke-width="8" stroke-linecap="round"/>
+  <path d="M72 122h48" stroke="#B98576" stroke-width="7" stroke-linecap="round"/>
+  <text x="96" y="151" text-anchor="middle" font-family="Georgia, serif" font-size="22" font-weight="700" fill="#6F403E">SM</text>
+</svg>
+
