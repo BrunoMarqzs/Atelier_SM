@@ -17,7 +17,7 @@
     },
     "web": {
       "bundler": "metro",
-      "favicon": "./public/icons/icon-192.svg",
+      "favicon": "./public/icons/icon-192.png",
       "name": "Atelier Sibele Marques",
       "shortName": "Atelier Sibele",
       "themeColor": "#FBF7F3",
