@@ -2,9 +2,10 @@ from logging.config import fileConfig
 
 from alembic import context
 from sqlalchemy import pool
-from sqlalchemy.ext.asyncio import async_engine_from_config
+from sqlalchemy.ext.asyncio import create_async_engine
 
 from app.config.database import Base
+from app.config.database_url import build_asyncpg_connection_settings
 from app.config.settings import get_settings
 from app.models import (  # noqa: F401
     AdminUser,
@@ -23,7 +24,8 @@ from app.models import (  # noqa: F401
 
 config = context.config
 settings = get_settings()
-config.set_main_option("sqlalchemy.url", settings.resolved_database_url)
+connection_settings = build_asyncpg_connection_settings(settings.resolved_database_url)
+config.set_main_option("sqlalchemy.url", connection_settings.url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -38,10 +40,10 @@ def do_run_migrations(connection) -> None:
 
 
 async def run_async_migrations() -> None:
-    connectable = async_engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+    connectable = create_async_engine(
+        connection_settings.url,
         poolclass=pool.NullPool,
+        connect_args=connection_settings.connect_args,
     )
 
     async with connectable.connect() as connection:
@@ -52,7 +54,7 @@ async def run_async_migrations() -> None:
 
 def run_migrations_offline() -> None:
     context.configure(
-        url=settings.resolved_database_url,
+        url=connection_settings.url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},

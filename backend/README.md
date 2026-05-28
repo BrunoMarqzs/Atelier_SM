@@ -50,6 +50,48 @@ Comandos separados:
 .\.venv\Scripts\python.exe -m app.commands.seed_database
 ```
 
+## PostgreSQL Supabase
+
+O backend usa SQLAlchemy assíncrono com `asyncpg`. Para Supabase, a URL precisa usar o driver:
+
+```env
+DATABASE_URL=postgresql+asyncpg://USUARIO:SENHA_URL_ENCODED@HOST:PORTA/postgres?sslmode=require
+```
+
+Recomendações:
+
+- Prefira a conexão direta do Supabase para migrations Alembic: host `db.<project-ref>.supabase.co`, porta `5432`.
+- Use o transaction pooler apenas para runtime quando necessário: host `*.pooler.supabase.com`, porta `6543`.
+- Se usar transaction pooler com `asyncpg`, adicione `prepared_statement_cache_size=0`.
+- Se a senha tiver caracteres especiais como `@`, `#`, `/`, `:`, `%` ou espaço, aplique URL encode antes de colar no `.env`.
+- O parâmetro `sslmode=require` pode permanecer na URL; o projeto converte isso internamente para SSL compatível com `asyncpg`.
+
+Exemplo com conexão direta:
+
+```env
+DATABASE_URL=postgresql+asyncpg://postgres:SENHA_URL_ENCODED@db.PROJECT_REF.supabase.co:5432/postgres?sslmode=require
+```
+
+Exemplo com transaction pooler:
+
+```env
+DATABASE_URL=postgresql+asyncpg://postgres.PROJECT_REF:SENHA_URL_ENCODED@aws-0-REGION.pooler.supabase.com:6543/postgres?sslmode=require&prepared_statement_cache_size=0
+```
+
+Depois de salvar o `.env`, rode:
+
+```powershell
+cd C:\Users\bruno\OneDrive\Documentos\Atelier_SM\backend
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m app.commands.seed_database
+```
+
+Para rodar tudo em um passo:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.commands.setup_database
+```
+
 ## Servidor
 
 ```powershell

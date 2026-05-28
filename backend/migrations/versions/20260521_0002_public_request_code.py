@@ -9,6 +9,7 @@ from collections.abc import Sequence
 
 import sqlalchemy as sa
 from alembic import op
+from sqlalchemy import inspect
 
 revision: str = "20260521_0002"
 down_revision: str | None = "20260519_0003"
@@ -17,10 +18,20 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.add_column(
-        "appointment_requests",
-        sa.Column("public_code", sa.String(length=16), nullable=True),
-    )
+    bind = op.get_bind()
+    inspector = inspect(bind)
+    columns = {column["name"] for column in inspector.get_columns("appointment_requests")}
+    indexes = {index["name"] for index in inspector.get_indexes("appointment_requests")}
+    unique_constraints = {
+        constraint["name"] for constraint in inspector.get_unique_constraints("appointment_requests")
+    }
+
+    if "public_code" not in columns:
+        op.add_column(
+            "appointment_requests",
+            sa.Column("public_code", sa.String(length=16), nullable=True),
+        )
+
     op.execute(
         """
         UPDATE appointment_requests
@@ -29,17 +40,21 @@ def upgrade() -> None:
         """
     )
     op.alter_column("appointment_requests", "public_code", nullable=False)
-    op.create_index(
-        op.f("ix_appointment_requests_public_code"),
-        "appointment_requests",
-        ["public_code"],
-        unique=False,
-    )
-    op.create_unique_constraint(
-        "uq_appointment_requests_public_code",
-        "appointment_requests",
-        ["public_code"],
-    )
+
+    if op.f("ix_appointment_requests_public_code") not in indexes:
+        op.create_index(
+            op.f("ix_appointment_requests_public_code"),
+            "appointment_requests",
+            ["public_code"],
+            unique=False,
+        )
+
+    if "uq_appointment_requests_public_code" not in unique_constraints:
+        op.create_unique_constraint(
+            "uq_appointment_requests_public_code",
+            "appointment_requests",
+            ["public_code"],
+        )
 
 
 def downgrade() -> None:
