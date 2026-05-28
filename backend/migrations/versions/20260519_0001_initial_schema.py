@@ -17,24 +17,24 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
-price_type = postgresql.ENUM("FIXED", "QUOTE", name="pricetype", create_type=False)
+price_type = postgresql.ENUM("fixed", "quote", name="pricetype", create_type=False)
 availability_status = postgresql.ENUM(
-    "AVAILABLE", "BLOCKED", "BOOKED", name="availabilitystatus", create_type=False
+    "available", "blocked", "booked", name="availabilitystatus", create_type=False
 )
 appointment_status = postgresql.ENUM(
-    "PENDING",
-    "UNDER_REVIEW",
-    "QUOTE_SENT",
-    "APPROVED",
-    "REJECTED",
-    "IN_PROGRESS",
-    "COMPLETED",
-    "CANCELLED",
+    "pending",
+    "under_review",
+    "quote_sent",
+    "approved",
+    "rejected",
+    "in_progress",
+    "completed",
+    "cancelled",
     name="appointmentstatus",
     create_type=False,
 )
 storage_provider = postgresql.ENUM(
-    "LOCAL", "CLOUDINARY", name="storageprovider", create_type=False
+    "local", "cloudinary", name="storageprovider", create_type=False
 )
 
 
