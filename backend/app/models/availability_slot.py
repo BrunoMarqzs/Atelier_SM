@@ -4,7 +4,7 @@ from sqlalchemy import DateTime, Enum, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config.database import Base
-from app.models.enums import AvailabilityStatus
+from app.models.enums import AvailabilityStatus, enum_values
 from app.models.mixins import TimestampMixin
 
 
@@ -16,7 +16,9 @@ class AvailabilitySlot(TimestampMixin, Base):
     starts_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     ends_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
     status: Mapped[AvailabilityStatus] = mapped_column(
-        Enum(AvailabilityStatus), nullable=False, default=AvailabilityStatus.AVAILABLE
+        Enum(AvailabilityStatus, values_callable=enum_values),
+        nullable=False,
+        default=AvailabilityStatus.AVAILABLE,
     )
     reason: Mapped[str | None] = mapped_column(String(240), nullable=True)
 

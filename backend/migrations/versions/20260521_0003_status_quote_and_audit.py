@@ -17,7 +17,7 @@ depends_on: str | Sequence[str] | None = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TYPE appointmentstatus ADD VALUE IF NOT EXISTS 'QUOTE_SENT'")
+    op.execute("ALTER TYPE appointmentstatus ADD VALUE IF NOT EXISTS 'quote_sent'")
     op.create_table(
         "audit_logs",
         sa.Column("id", sa.Integer(), nullable=False),

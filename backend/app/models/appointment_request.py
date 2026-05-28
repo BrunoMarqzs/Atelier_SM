@@ -4,7 +4,7 @@ from sqlalchemy import Enum, ForeignKey, Numeric, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config.database import Base
-from app.models.enums import AppointmentStatus
+from app.models.enums import AppointmentStatus, enum_values
 from app.models.mixins import TimestampMixin
 
 
@@ -21,7 +21,10 @@ class AppointmentRequest(TimestampMixin, Base):
         ForeignKey("availability_slots.id"), nullable=False, unique=True, index=True
     )
     status: Mapped[AppointmentStatus] = mapped_column(
-        Enum(AppointmentStatus), nullable=False, default=AppointmentStatus.PENDING, index=True
+        Enum(AppointmentStatus, values_callable=enum_values),
+        nullable=False,
+        default=AppointmentStatus.PENDING,
+        index=True,
     )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     admin_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
