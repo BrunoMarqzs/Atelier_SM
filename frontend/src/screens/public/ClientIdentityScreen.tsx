@@ -1,5 +1,5 @@
 ﻿import { useState } from "react";
-import type { CompositeScreenProps } from "@react-navigation/native";
+import { CommonActions, type CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { StyleSheet } from "react-native";
 
@@ -68,7 +68,16 @@ export function ClientIdentityScreen({ navigation }: Props) {
     if (!validateIdentity()) {
       return;
     }
-    navigation.getParent()?.navigate("Client", { screen: "ServiceSelection" });
+    booking.clearDraft();
+    navigation.getParent()?.dispatch(
+      CommonActions.reset({
+        index: 1,
+        routes: [
+          { name: "Public", params: { screen: "ClientIdentity" } },
+          { name: "Client", params: { screen: "ServiceSelection" } }
+        ]
+      })
+    );
   }
 
   return (
