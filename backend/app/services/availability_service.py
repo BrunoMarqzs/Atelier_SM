@@ -22,13 +22,8 @@ class AvailabilityService:
     async def list_available(
         self, starts_at: datetime, ends_at: datetime
     ) -> list[AvailabilitySlot]:
-        await self.ensure_business_slots(starts_at, ends_at)
         slots = await self.repository.list_between(starts_at, ends_at)
-        allowed_slots = []
-        for slot in slots:
-            if await self.is_allowed_slot_start(slot.starts_at):
-                allowed_slots.append(slot)
-        return allowed_slots
+        return [slot for slot in slots if is_allowed_slot_start(slot.starts_at)]
 
     async def ensure_business_slots(self, starts_at: datetime, ends_at: datetime) -> None:
         cursor = datetime.combine(starts_at.date(), time(hour=0), tzinfo=starts_at.tzinfo)
