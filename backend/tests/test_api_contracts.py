@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator
 from decimal import Decimal
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 
@@ -10,6 +11,8 @@ from app.utils.security import require_admin_user
 
 
 class FakeSession:
+    image_by_id = {}
+
     def __init__(self) -> None:
         self.committed = False
         self.refreshed = False
@@ -19,6 +22,9 @@ class FakeSession:
 
     async def refresh(self, _entity) -> None:
         self.refreshed = True
+
+    async def get(self, _model, entity_id):
+        return self.image_by_id.get(entity_id)
 
 
 async def fake_session_dependency() -> AsyncGenerator[FakeSession, None]:
@@ -133,6 +139,24 @@ def test_public_request_endpoint_returns_request_by_code(monkeypatch) -> None:
     assert body["id"] == 99
     assert body["status"] == "under_review"
     assert body["public_url"].endswith("/pedido/ABC123XYZ0")
+
+
+def test_public_image_file_endpoint_serves_database_image() -> None:
+    FakeSession.image_by_id = {
+        7: SimpleNamespace(
+            content_bytes=b"\xff\xd8\xff\xe0content",
+            mime_type="image/jpeg",
+            original_filename="vestido.jpg",
+        )
+    }
+    client = build_client()
+
+    response = client.get("/api/requests/images/7/file")
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/jpeg"
+    assert response.content == b"\xff\xd8\xff\xe0content"
+    FakeSession.image_by_id = {}
 
 
 def test_admin_routes_require_authentication() -> None:

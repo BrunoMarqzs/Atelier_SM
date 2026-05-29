@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     upload_provider: str = "local"
     local_upload_dir: Path = Path("storage/uploads")
     public_upload_base_url: str = "http://localhost:8000/uploads"
+    database_upload_storage_enabled: bool = True
     public_web_base_url: str = "http://localhost:8084"
     max_upload_size_bytes: int = Field(default=8 * 1024 * 1024, ge=1024 * 1024)
     allowed_image_mime_types: str = "image/jpeg,image/png,image/webp"

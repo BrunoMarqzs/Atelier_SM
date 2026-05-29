@@ -329,13 +329,18 @@ class AppointmentRequestService:
         request_image = RequestImage(
             request_id=request.id,
             storage_provider=image.provider,
-            url=image.url,
+            url=image.url or "/api/requests/images/pending/file",
             thumbnail_url=image.thumbnail_url,
             public_id=image.public_id,
             original_filename=image.original_filename,
             mime_type=image.mime_type,
             size_bytes=image.size_bytes,
+            content_bytes=image.content_bytes,
         )
         request.images.append(request_image)
         await self.session.flush()
+        if image.content_bytes is not None:
+            request_image.url = f"/api/requests/images/{request_image.id}/file"
+            request_image.thumbnail_url = request_image.url
+            await self.session.flush()
         return request_image

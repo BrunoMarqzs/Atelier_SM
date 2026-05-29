@@ -137,6 +137,7 @@ async def test_add_image_persists_storage_metadata() -> None:
             original_filename="vestido.jpg",
             mime_type="image/jpeg",
             size_bytes=2048,
+            content_bytes=None,
         ),
     )
 
@@ -145,6 +146,46 @@ async def test_add_image_persists_storage_metadata() -> None:
     assert image.size_bytes == 2048
     assert service.session.flushed is True
     assert request.images == [image]
+
+
+@pytest.mark.anyio
+async def test_add_image_exposes_database_image_route() -> None:
+    service = build_service()
+    request = SimpleNamespace(id=11, images=[])
+
+    async def fake_get_required(_request_id):
+        return request
+
+    class FakeSession:
+        def __init__(self) -> None:
+            self.flushes = 0
+
+        async def flush(self):
+            self.flushes += 1
+            for image in request.images:
+                image.id = 77
+
+    service.session = FakeSession()
+    service.get_required = fake_get_required  # type: ignore[method-assign]
+
+    image = await service.add_image(
+        11,
+        SimpleNamespace(
+            provider=StorageProvider.LOCAL,
+            url="",
+            thumbnail_url=None,
+            public_id="database/full.jpg",
+            original_filename="vestido.jpg",
+            mime_type="image/jpeg",
+            size_bytes=2048,
+            content_bytes=b"\xff\xd8\xff\xe0content",
+        ),
+    )
+
+    assert image.url == "/api/requests/images/77/file"
+    assert image.thumbnail_url == image.url
+    assert image.content_bytes == b"\xff\xd8\xff\xe0content"
+    assert service.session.flushes == 2
 
 
 @pytest.mark.anyio

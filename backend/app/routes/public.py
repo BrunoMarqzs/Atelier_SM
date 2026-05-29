@@ -2,10 +2,12 @@
 
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Query, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
+from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_session
+from app.models.request_image import RequestImage
 from app.services.availability_service import AvailabilityService
 from app.services.booking_facade import BookingFacade
 from app.services.request_service import AppointmentRequestService
@@ -84,6 +86,22 @@ async def upload_request_image(
     await session.commit()
     await session.refresh(request_image)
     return request_image
+
+
+@router.get("/requests/images/{image_id}/file")
+async def get_request_image_file(
+    image_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> Response:
+    image = await session.get(RequestImage, image_id)
+    if not image or not image.content_bytes:
+        raise HTTPException(status_code=404, detail="Imagem não encontrada.")
+
+    headers = {
+        "Cache-Control": "public, max-age=31536000, immutable",
+        "Content-Disposition": f'inline; filename="{image.original_filename or "imagem"}"',
+    }
+    return Response(content=image.content_bytes, media_type=image.mime_type, headers=headers)
 
 
 @router.patch("/requests/{request_id}/reschedule", response_model=AppointmentRequestRead)
