@@ -12,6 +12,7 @@
 import { formatSlotDateTime, formatSlotTime, slotKeyFromStart } from "@/utils/scheduleRules";
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
+const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
 let accessToken: string | undefined;
 let refreshToken: string | undefined;
@@ -233,6 +234,24 @@ function mapOptionalMoney(value: string | number | null | undefined): number | u
   return Number.isFinite(numericValue) ? numericValue : undefined;
 }
 
+function normalizeImageUrl(url: string | null | undefined) {
+  if (!url) {
+    return "";
+  }
+  if (url.startsWith("/")) {
+    return `${API_ORIGIN}${url}`;
+  }
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "localhost" || parsed.hostname === "127.0.0.1") {
+      return `${API_ORIGIN}${parsed.pathname}${parsed.search}`;
+    }
+  } catch {
+    return url;
+  }
+  return url;
+}
+
 function mapScheduleConfig(config: BackendScheduleConfig): ScheduleConfig {
   return {
     id: config.id,
@@ -268,7 +287,7 @@ function mapRequest(request: BackendRequest): AppointmentRequest {
     status: request.status,
     notes: request.notes,
     adminComment: request.admin_comment,
-    imageUrls: request.images?.map((image) => image.url) ?? [],
+    imageUrls: request.images?.map((image) => normalizeImageUrl(image.url)).filter(Boolean) ?? [],
     estimatedPrice: mapOptionalMoney(request.estimated_price),
     timeline: request.status_history?.map(mapTimeline) ?? []
   };
@@ -730,6 +749,6 @@ export async function uploadRequestImage(requestId: number, imageUri: string): P
     throw new Error("Não foi possível enviar a imagem.");
   }
   const data = (await response.json()) as { url: string; thumbnail_url?: string | null };
-  return data.thumbnail_url ?? data.url;
+  return normalizeImageUrl(data.thumbnail_url ?? data.url);
 }
 

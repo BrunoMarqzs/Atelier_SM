@@ -1,4 +1,4 @@
-from sqlalchemy import Enum, ForeignKey, String
+from sqlalchemy import Enum, ForeignKey, LargeBinary, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.config.database import Base
@@ -22,5 +22,6 @@ class RequestImage(TimestampMixin, Base):
     original_filename: Mapped[str | None] = mapped_column(String(240), nullable=True)
     mime_type: Mapped[str] = mapped_column(String(80), nullable=False)
     size_bytes: Mapped[int] = mapped_column(nullable=False)
+    content_bytes: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
 
     request = relationship("AppointmentRequest", back_populates="images")

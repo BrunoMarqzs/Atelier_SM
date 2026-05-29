@@ -33,6 +33,7 @@ async def test_local_storage_rejects_files_above_size_limit(monkeypatch, tmp_pat
             allowed_image_mime_types="image/jpeg,image/png,image/webp",
             local_upload_dir=tmp_path,
             public_upload_base_url="http://localhost/uploads",
+            database_upload_storage_enabled=False,
         ),
     )
     file = UploadFile(filename="imagem.jpg", file=BytesIO(b"\xff\xd8\xff\xe0too-large"))
@@ -50,6 +51,7 @@ async def test_local_storage_persists_safe_image_metadata(monkeypatch, tmp_path)
             allowed_image_mime_types="image/jpeg,image/png,image/webp",
             local_upload_dir=tmp_path,
             public_upload_base_url="http://cdn.local/uploads",
+            database_upload_storage_enabled=False,
         ),
     )
     file = UploadFile(filename="../vestido.jpg", file=BytesIO(b"\xff\xd8\xff\xe0content"))
@@ -62,3 +64,26 @@ async def test_local_storage_persists_safe_image_metadata(monkeypatch, tmp_path)
     assert image.url.startswith("http://cdn.local/uploads/")
     assert image.thumbnail_url == image.url
     assert (tmp_path / image.public_id).exists()
+
+
+@pytest.mark.anyio
+async def test_database_storage_keeps_image_bytes_without_local_file(monkeypatch, tmp_path) -> None:
+    monkeypatch.setattr(
+        "app.strategies.storage.get_settings",
+        lambda: SimpleNamespace(
+            max_upload_size_bytes=1024,
+            allowed_image_mime_types="image/jpeg,image/png,image/webp",
+            local_upload_dir=tmp_path,
+            public_upload_base_url="http://cdn.local/uploads",
+            database_upload_storage_enabled=True,
+        ),
+    )
+    content = b"\xff\xd8\xff\xe0content"
+    file = UploadFile(filename="vestido.jpg", file=BytesIO(content))
+
+    image = await LocalImageStorageStrategy().store(file)
+
+    assert image.content_bytes == content
+    assert image.url == ""
+    assert image.public_id.startswith("database/")
+    assert not any(tmp_path.iterdir())

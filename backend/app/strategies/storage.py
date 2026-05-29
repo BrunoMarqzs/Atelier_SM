@@ -25,6 +25,7 @@ class StoredImage:
     original_filename: str | None
     mime_type: str
     size_bytes: int
+    content_bytes: bytes | None = None
 
 
 def detect_mime_type(content: bytes) -> str | None:
@@ -55,6 +56,19 @@ class LocalImageStorageStrategy:
             raise DomainError("Formato de imagem não permitido.")
 
         _, extension = MIME_SIGNATURES[mime_type]
+        if settings.database_upload_storage_enabled:
+            public_id = f"database/{uuid4().hex}{extension}"
+            return StoredImage(
+                provider=StorageProvider.LOCAL,
+                url="",
+                thumbnail_url=None,
+                public_id=public_id,
+                original_filename=safe_original_filename(file.filename),
+                mime_type=mime_type,
+                size_bytes=len(content),
+                content_bytes=content,
+            )
+
         upload_month = datetime.now(UTC).strftime("%Y/%m")
         upload_dir = settings.local_upload_dir / upload_month
         upload_dir.mkdir(parents=True, exist_ok=True)
