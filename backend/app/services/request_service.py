@@ -12,8 +12,8 @@ from app.observers.events import StatusChangedEvent
 from app.observers.status_history_observer import StatusHistoryObserver
 from app.repositories.request_repository import AppointmentRequestRepository
 from app.repositories.status_history_repository import StatusHistoryRepository
-from app.services.availability_service import AvailabilityService
 from app.services.audit_service import AuditService
+from app.services.availability_service import AvailabilityService
 from app.services.client_service import ClientService
 from app.services.notification_service import NotificationService
 from app.services.service_service import ServiceService
@@ -22,8 +22,8 @@ from app.strategies.pricing import PricingStrategyFactory
 from app.strategies.storage import StoredImage
 from app.utils.errors import ConflictError, ForbiddenError, NotFoundError
 from app.utils.public_codes import generate_public_request_code
-from app.validators.request import AppointmentRequestCreate
 from app.validators.client import normalize_phone
+from app.validators.request import AppointmentRequestCreate
 
 
 class AppointmentRequestService:
@@ -181,7 +181,10 @@ class AppointmentRequestService:
         await self.notification_service.create_internal(
             event_type=f"request_{target_status.value}",
             title="Status do pedido atualizado",
-            message=f"Pedido #{request.id} alterado de {previous_status.value} para {target_status.value}.",
+            message=(
+                f"Pedido #{request.id} alterado de {previous_status.value} "
+                f"para {target_status.value}."
+            ),
             request_id=request.id,
         )
         return request

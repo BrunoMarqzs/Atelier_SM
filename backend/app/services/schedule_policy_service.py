@@ -90,7 +90,9 @@ class SchedulePolicyService:
             return set(exception.hours or [])
 
         config = await self.get_config()
-        hours = set((config.weekly_hours or DEFAULT_WEEKLY_HOURS).get(str(atelier_date_time.weekday()), []))
+        hours = set(
+            (config.weekly_hours or DEFAULT_WEEKLY_HOURS).get(str(atelier_date_time.weekday()), [])
+        )
         blocked_hours = set(config.lunch_block_hours or DEFAULT_LUNCH_BLOCK_HOURS)
         return hours - blocked_hours
 

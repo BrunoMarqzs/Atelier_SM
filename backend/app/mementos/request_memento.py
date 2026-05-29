@@ -28,6 +28,8 @@ class AppointmentRequestMemento:
             "request_id": self.request_id,
             "status": self.status.value,
             "admin_comment": self.admin_comment,
-            "estimated_price": str(self.estimated_price) if self.estimated_price is not None else None,
+            "estimated_price": str(self.estimated_price)
+            if self.estimated_price is not None
+            else None,
             "slot_id": self.slot_id,
         }

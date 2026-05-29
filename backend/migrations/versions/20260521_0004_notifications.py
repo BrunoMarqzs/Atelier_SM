@@ -28,16 +28,26 @@ def upgrade() -> None:
         sa.Column("message", sa.Text(), nullable=False),
         sa.Column("request_id", sa.Integer(), nullable=True),
         sa.Column("read_at", sa.DateTime(timezone=True), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.ForeignKeyConstraint(["request_id"], ["appointment_requests.id"]),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_index(op.f("ix_notifications_channel"), "notifications", ["channel"], unique=False)
-    op.create_index(op.f("ix_notifications_event_type"), "notifications", ["event_type"], unique=False)
+    op.create_index(
+        op.f("ix_notifications_event_type"), "notifications", ["event_type"], unique=False
+    )
     op.create_index(op.f("ix_notifications_id"), "notifications", ["id"], unique=False)
-    op.create_index(op.f("ix_notifications_recipient_type"), "notifications", ["recipient_type"], unique=False)
-    op.create_index(op.f("ix_notifications_request_id"), "notifications", ["request_id"], unique=False)
+    op.create_index(
+        op.f("ix_notifications_recipient_type"), "notifications", ["recipient_type"], unique=False
+    )
+    op.create_index(
+        op.f("ix_notifications_request_id"), "notifications", ["request_id"], unique=False
+    )
 
 
 def downgrade() -> None:

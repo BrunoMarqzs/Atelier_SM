@@ -35,8 +35,12 @@ def upgrade() -> None:
         sa.Column("closing_time", sa.String(length=5), nullable=False),
         sa.Column("lunch_block_hours", sa.JSON(), nullable=False),
         sa.Column("weekly_hours", sa.JSON(), nullable=False),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
     )
     op.create_table(
@@ -46,12 +50,21 @@ def upgrade() -> None:
         sa.Column("kind", sa.String(length=40), nullable=False),
         sa.Column("hours", sa.JSON(), nullable=True),
         sa.Column("reason", sa.String(length=240), nullable=True),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
+        sa.Column(
+            "updated_at", sa.DateTime(timezone=True), server_default=sa.func.now(), nullable=False
+        ),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("exception_date", name="uq_schedule_exception_date"),
     )
-    op.create_index(op.f("ix_schedule_exceptions_exception_date"), "schedule_exceptions", ["exception_date"], unique=False)
+    op.create_index(
+        op.f("ix_schedule_exceptions_exception_date"),
+        "schedule_exceptions",
+        ["exception_date"],
+        unique=False,
+    )
     op.create_index(op.f("ix_schedule_exceptions_id"), "schedule_exceptions", ["id"], unique=False)
     op.bulk_insert(
         sa.table(
@@ -79,4 +92,3 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_schedule_exceptions_exception_date"), table_name="schedule_exceptions")
     op.drop_table("schedule_exceptions")
     op.drop_table("schedule_configs")
-

@@ -8,7 +8,6 @@ from uuid import uuid4
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import ArgumentError
 
-
 SSL_QUERY_KEYS = {"ssl", "sslmode"}
 SSL_REQUIRED_VALUES = {"1", "true", "require", "required", "verify-ca", "verify-full"}
 SSL_DISABLED_VALUES = {"0", "false", "disable", "disabled", "allow", "prefer"}
@@ -50,7 +49,9 @@ def build_asyncpg_connection_settings(raw_url: str) -> DatabaseConnectionSetting
         connect_args["prepared_statement_name_func"] = lambda: f"__asyncpg_{uuid4()}__"
 
     cleaned_url = parsed_url.set(query=query)
-    return DatabaseConnectionSettings(url=cleaned_url.render_as_string(hide_password=False), connect_args=connect_args)
+    return DatabaseConnectionSettings(
+        url=cleaned_url.render_as_string(hide_password=False), connect_args=connect_args
+    )
 
 
 def _normalize_asyncpg_scheme(raw_url: str) -> str:

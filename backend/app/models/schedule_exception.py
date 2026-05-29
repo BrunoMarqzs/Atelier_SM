@@ -16,4 +16,3 @@ class ScheduleException(TimestampMixin, Base):
     kind: Mapped[str] = mapped_column(String(40), nullable=False, default="closed")
     hours: Mapped[list[int] | None] = mapped_column(JSON, nullable=True)
     reason: Mapped[str | None] = mapped_column(String(240), nullable=True)
-

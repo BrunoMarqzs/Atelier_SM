@@ -1,5 +1,6 @@
-from app.config.database_url import build_asyncpg_connection_settings
 import pytest
+
+from app.config.database_url import build_asyncpg_connection_settings
 
 
 def test_accepts_supabase_direct_url_with_sslmode() -> None:
@@ -7,7 +8,9 @@ def test_accepts_supabase_direct_url_with_sslmode() -> None:
         "postgresql://postgres:secret@db.project.supabase.co:5432/postgres?sslmode=require"
     )
 
-    assert settings.url == "postgresql+asyncpg://postgres:secret@db.project.supabase.co:5432/postgres"
+    assert (
+        settings.url == "postgresql+asyncpg://postgres:secret@db.project.supabase.co:5432/postgres"
+    )
     assert "ssl" in settings.connect_args
 
 
@@ -24,7 +27,9 @@ def test_keeps_asyncpg_url_and_pooler_cache_option() -> None:
 
 
 def test_accepts_legacy_postgres_scheme() -> None:
-    settings = build_asyncpg_connection_settings("postgres://postgres:secret@localhost:5432/atelier_sibele")
+    settings = build_asyncpg_connection_settings(
+        "postgres://postgres:secret@localhost:5432/atelier_sibele"
+    )
 
     assert settings.url == "postgresql+asyncpg://postgres:secret@localhost:5432/atelier_sibele"
     assert settings.connect_args == {}
@@ -40,4 +45,6 @@ def test_forces_ssl_for_supabase_host() -> None:
 
 def test_rejects_url_without_host() -> None:
     with pytest.raises(ValueError, match="exatamente duas barras"):
-        build_asyncpg_connection_settings("postgresql+asyncpg:///postgres:secret@db.project.supabase.co:5432/postgres")
+        build_asyncpg_connection_settings(
+            "postgresql+asyncpg:///postgres:secret@db.project.supabase.co:5432/postgres"
+        )
