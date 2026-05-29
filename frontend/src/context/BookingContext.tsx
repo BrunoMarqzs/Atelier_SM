@@ -13,6 +13,7 @@ type BookingState = {
   setSlot: (slot: TimeSlot | undefined) => void;
   setNotes: (notes: string) => void;
   addImageUri: (uri: string) => void;
+  clearDraft: () => void;
   reset: () => void;
 };
 
@@ -37,6 +38,12 @@ export function BookingProvider({ children }: PropsWithChildren) {
       setSlot,
       setNotes,
       addImageUri: (uri: string) => setImageUris((current) => [...current, uri]),
+      clearDraft: () => {
+        setService(undefined);
+        setSlot(undefined);
+        setNotes("");
+        setImageUris([]);
+      },
       reset: () => {
         setClient(undefined);
         setService(undefined);

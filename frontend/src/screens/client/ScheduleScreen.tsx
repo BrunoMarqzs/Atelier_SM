@@ -61,6 +61,17 @@ export function ScheduleScreen({ navigation }: Props) {
   );
 
   useEffect(() => {
+    if (!booking.service) {
+      navigation.replace("ServiceSelection");
+    }
+  }, [booking.service, navigation]);
+
+  useEffect(() => {
+    if (!booking.service) {
+      setRemoteSlots([]);
+      setLoadingSlots(false);
+      return;
+    }
     const range = dayRange(selectedDay.date);
     setAgendaError(undefined);
     setLoadingSlots(true);
@@ -75,7 +86,7 @@ export function ScheduleScreen({ navigation }: Props) {
       .finally(() => {
         setLoadingSlots(false);
       });
-  }, [reloadToken, selectedDay]);
+  }, [booking.service, reloadToken, selectedDay]);
 
   function continueFlow() {
     if (!booking.slot?.available) {
