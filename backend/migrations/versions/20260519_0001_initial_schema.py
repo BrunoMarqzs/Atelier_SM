@@ -33,9 +33,7 @@ appointment_status = postgresql.ENUM(
     name="appointmentstatus",
     create_type=False,
 )
-storage_provider = postgresql.ENUM(
-    "local", "cloudinary", name="storageprovider", create_type=False
-)
+storage_provider = postgresql.ENUM("local", "cloudinary", name="storageprovider", create_type=False)
 
 
 def upgrade() -> None:

@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.validators.common import ORMModel
 
-
 DEFAULT_WEEKLY_HOURS: dict[str, list[int]] = {
     "0": [8, 9, 10, 14, 15, 16, 17],
     "1": [8, 9, 10, 14, 15, 16, 17, 18, 19],
@@ -42,10 +41,16 @@ class ScheduleConfigUpdate(BaseModel):
 
     @field_validator("weekly_hours")
     @classmethod
-    def validate_weekly_hours(cls, value: dict[str, list[int]] | None) -> dict[str, list[int]] | None:
+    def validate_weekly_hours(
+        cls, value: dict[str, list[int]] | None
+    ) -> dict[str, list[int]] | None:
         if value is None:
             return None
-        return {str(day): normalize_hours(hours) for day, hours in value.items() if str(day) in DEFAULT_WEEKLY_HOURS}
+        return {
+            str(day): normalize_hours(hours)
+            for day, hours in value.items()
+            if str(day) in DEFAULT_WEEKLY_HOURS
+        }
 
 
 class ScheduleExceptionRead(ORMModel):
@@ -66,4 +71,3 @@ class ScheduleExceptionCreate(BaseModel):
     @classmethod
     def validate_hours(cls, value: list[int] | None) -> list[int] | None:
         return normalize_hours(value) if value is not None else None
-

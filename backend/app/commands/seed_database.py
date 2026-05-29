@@ -10,9 +10,9 @@ from app.config.settings import get_settings
 from app.models.admin_user import AdminUser
 from app.models.availability_slot import AvailabilitySlot
 from app.models.enums import AvailabilityStatus, PriceType
-from app.utils.schedule_rules import allowed_hours_for_date
 from app.models.service import Service
 from app.utils.passwords import hash_password
+from app.utils.schedule_rules import allowed_hours_for_date
 
 INITIAL_SERVICES = [
     {
@@ -77,7 +77,9 @@ async def seed_admin(session: AsyncSession) -> None:
 
 async def seed_services(session: AsyncSession) -> None:
     print("Seed: sincronizando serviços iniciais...")
-    existing_result = await session.execute(select(Service).where(Service.name.in_([service["name"] for service in INITIAL_SERVICES])))
+    existing_result = await session.execute(
+        select(Service).where(Service.name.in_([service["name"] for service in INITIAL_SERVICES]))
+    )
     existing_by_name = {service.name: service for service in existing_result.scalars()}
 
     for service_data in INITIAL_SERVICES:

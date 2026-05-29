@@ -8,7 +8,11 @@ from app.models.enums import AvailabilityStatus
 from app.repositories.availability_repository import AvailabilityRepository
 from app.services.schedule_policy_service import SchedulePolicyService
 from app.utils.errors import ConflictError, NotFoundError
-from app.utils.schedule_rules import allowed_hours_for_date, is_allowed_slot_start, to_atelier_datetime
+from app.utils.schedule_rules import (
+    allowed_hours_for_date,
+    is_allowed_slot_start,
+    to_atelier_datetime,
+)
 from app.validators.availability import AvailabilitySlotCreate, BlockSlotInput, ReleaseSlotInput
 
 SLOT_MINUTES = 60
@@ -136,7 +140,9 @@ class AvailabilityService:
 
     async def is_allowed_slot_start(self, starts_at: datetime) -> bool:
         atelier_starts_at = to_atelier_datetime(starts_at)
-        return atelier_starts_at.hour in await self.schedule_policy.allowed_hours_for_date(starts_at)
+        return atelier_starts_at.hour in await self.schedule_policy.allowed_hours_for_date(
+            starts_at
+        )
 
     def _validate_window_shape(self, starts_at: datetime, ends_at: datetime) -> None:
         if ends_at <= starts_at:

@@ -31,4 +31,3 @@ class ScheduleExceptionRepository(BaseRepository[ScheduleException]):
 
     async def get(self, exception_id: int) -> ScheduleException | None:
         return await self.session.get(ScheduleException, exception_id)
-

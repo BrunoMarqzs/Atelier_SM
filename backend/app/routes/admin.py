@@ -7,20 +7,20 @@ from app.commands.availability_commands import BlockSlotCommand
 from app.commands.request_commands import ChangeRequestStatusCommand
 from app.config.database import get_session
 from app.models.enums import AppointmentStatus
-from app.services.availability_service import AvailabilityService
 from app.services.audit_service import AuditService
+from app.services.availability_service import AvailabilityService
 from app.services.notification_service import NotificationService
 from app.services.request_service import AppointmentRequestService
 from app.services.schedule_policy_service import SchedulePolicyService
 from app.services.service_service import ServiceService
 from app.utils.security import require_admin_user
+from app.validators.audit import AuditLogRead
 from app.validators.availability import (
     AvailabilitySlotCreate,
     AvailabilitySlotRead,
     BlockSlotInput,
     ReleaseSlotInput,
 )
-from app.validators.audit import AuditLogRead
 from app.validators.common import MessageResponse
 from app.validators.notification import NotificationRead
 from app.validators.request import (
@@ -186,9 +186,7 @@ async def add_comment(
     payload: AdminCommentInput,
     session: AsyncSession = Depends(get_session),
 ) -> AppointmentRequestRead:
-    await AppointmentRequestService(session).add_admin_comment(
-        request_id, payload.comment
-    )
+    await AppointmentRequestService(session).add_admin_comment(request_id, payload.comment)
     await session.commit()
     return await AppointmentRequestService(session).get_required(request_id)
 

@@ -69,9 +69,39 @@ def test_allowed_hours_match_atelier_schedule() -> None:
     service = AvailabilityService(session=None)  # type: ignore[arg-type]
 
     assert service.allowed_hours_for_date(datetime(2026, 6, 1)) == {8, 9, 10, 14, 15, 16, 17}
-    assert service.allowed_hours_for_date(datetime(2026, 6, 2)) == {8, 9, 10, 14, 15, 16, 17, 18, 19}
-    assert service.allowed_hours_for_date(datetime(2026, 6, 4)) == {8, 9, 10, 14, 15, 16, 17, 18, 19}
-    assert service.allowed_hours_for_date(datetime(2026, 6, 5)) == {8, 9, 10, 14, 15, 16, 17, 18, 19}
+    assert service.allowed_hours_for_date(datetime(2026, 6, 2)) == {
+        8,
+        9,
+        10,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+    }
+    assert service.allowed_hours_for_date(datetime(2026, 6, 4)) == {
+        8,
+        9,
+        10,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+    }
+    assert service.allowed_hours_for_date(datetime(2026, 6, 5)) == {
+        8,
+        9,
+        10,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+    }
     assert service.allowed_hours_for_date(datetime(2026, 6, 6)) == {14, 15, 16}
     assert service.allowed_hours_for_date(datetime(2026, 6, 7)) == set()
 

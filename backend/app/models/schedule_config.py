@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, Integer, String
+from sqlalchemy import JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.config.database import Base
@@ -13,4 +13,3 @@ class ScheduleConfig(TimestampMixin, Base):
     closing_time: Mapped[str] = mapped_column(String(5), nullable=False, default="19:00")
     lunch_block_hours: Mapped[list[int]] = mapped_column(JSON, nullable=False, default=list)
     weekly_hours: Mapped[dict[str, list[int]]] = mapped_column(JSON, nullable=False, default=dict)
-

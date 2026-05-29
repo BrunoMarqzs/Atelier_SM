@@ -23,7 +23,8 @@ def upgrade() -> None:
     columns = {column["name"] for column in inspector.get_columns("appointment_requests")}
     indexes = {index["name"] for index in inspector.get_indexes("appointment_requests")}
     unique_constraints = {
-        constraint["name"] for constraint in inspector.get_unique_constraints("appointment_requests")
+        constraint["name"]
+        for constraint in inspector.get_unique_constraints("appointment_requests")
     }
 
     if "public_code" not in columns:
@@ -35,7 +36,9 @@ def upgrade() -> None:
     op.execute(
         """
         UPDATE appointment_requests
-        SET public_code = UPPER(SUBSTRING(MD5(id::text || created_at::text || random()::text), 1, 10))
+        SET public_code = UPPER(
+            SUBSTRING(MD5(id::text || created_at::text || random()::text), 1, 10)
+        )
         WHERE public_code IS NULL
         """
     )
