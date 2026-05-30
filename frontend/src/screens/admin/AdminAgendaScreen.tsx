@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AnimatedPressable } from "@/animations/AnimatedPressable";
+import { WhatsAppNotifyButton } from "@/components/admin/WhatsAppNotifyButton";
 import { TimeSlotPill } from "@/components/booking/TimeSlotPill";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ImagePreview } from "@/components/common/ImagePreview";
@@ -338,6 +339,7 @@ export function AdminAgendaScreen() {
                     title="Sem imagem"
                   />
                 )}
+                <WhatsAppNotifyButton request={selectedRequest} />
               </View>
             ) : (
               <Text style={styles.emptyText}>

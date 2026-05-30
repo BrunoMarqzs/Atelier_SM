@@ -5,6 +5,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { AnimatedPressable } from "@/animations/AnimatedPressable";
 import { FadeInView } from "@/animations/FadeInView";
 import { RequestPreviewCard } from "@/components/admin/RequestPreviewCard";
+import { WhatsAppNotifyButton } from "@/components/admin/WhatsAppNotifyButton";
 import { ReschedulePanel } from "@/components/booking/ReschedulePanel";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ElegantInput } from "@/components/common/ElegantInput";
@@ -387,6 +388,8 @@ export function AdminRequestsScreen() {
               <Text style={styles.infoText}>Valor sob avaliação</Text>
             )}
           </View>
+
+          <WhatsAppNotifyButton request={freshSelectedRequest} />
 
           {freshSelectedRequest.notes ? (
             <View style={styles.notesBox}>
