@@ -55,6 +55,9 @@ function eventTitle(event: RequestTimelineEvent) {
   if (event.comment?.toLowerCase().includes("remarc")) {
     return "Horário remarcado";
   }
+  if (event.comment && event.changedBy === "admin" && event.fromStatus === event.toStatus) {
+    return "Novo comentário do atelier";
+  }
   if (event.changedBy === "client") {
     return "Atualização da cliente";
   }
