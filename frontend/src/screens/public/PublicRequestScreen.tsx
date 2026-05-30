@@ -10,6 +10,7 @@ import { LoadingState } from "@/components/common/LoadingState";
 import { Notice } from "@/components/common/Notice";
 import { PremiumButton } from "@/components/common/PremiumButton";
 import { PremiumSurface } from "@/components/common/PremiumSurface";
+import { RequestTimeline } from "@/components/common/RequestTimeline";
 import { Screen } from "@/components/common/Screen";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
@@ -103,22 +104,7 @@ export function PublicRequestScreen({ navigation, route }: Props) {
               />
             )}
 
-            {request.timeline?.length ? (
-              <View style={styles.timeline}>
-                <Text style={styles.boxLabel}>Histórico</Text>
-                {request.timeline.map((event) => (
-                  <View key={event.id} style={styles.timelineItem}>
-                    <View style={styles.timelineDot} />
-                    <View style={styles.timelineBody}>
-                      <Text style={styles.timelineTitle}>
-                        {event.changedBy === "admin" ? "Atelier" : "Cliente"}: {event.toStatus}
-                      </Text>
-                      {event.comment ? <Text style={styles.timelineComment}>{event.comment}</Text> : null}
-                    </View>
-                  </View>
-                ))}
-              </View>
-            ) : null}
+            <RequestTimeline events={request.timeline} />
 
             <PremiumButton icon="refresh-outline" label="Atualizar acompanhamento" onPress={() => void loadRequest()} />
           </PremiumSurface>
@@ -197,39 +183,5 @@ const styles = StyleSheet.create({
   boxText: {
     ...theme.typography.body,
     color: theme.colors.graphite
-  },
-  timeline: {
-    borderColor: theme.colors.line,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    gap: theme.spacing.sm,
-    padding: theme.spacing.md
-  },
-  timelineItem: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: theme.spacing.sm
-  },
-  timelineDot: {
-    backgroundColor: theme.colors.roseGold,
-    borderColor: theme.colors.ivory,
-    borderRadius: theme.radius.pill,
-    borderWidth: 2,
-    height: 12,
-    marginTop: 4,
-    width: 12
-  },
-  timelineBody: {
-    flex: 1
-  },
-  timelineTitle: {
-    ...theme.typography.caption,
-    color: theme.colors.ink,
-    fontWeight: "800"
-  },
-  timelineComment: {
-    ...theme.typography.caption,
-    color: theme.colors.graphite,
-    marginTop: 2
   }
 });

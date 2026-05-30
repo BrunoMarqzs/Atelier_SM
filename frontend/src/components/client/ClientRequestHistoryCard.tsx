@@ -6,6 +6,7 @@ import { ReschedulePanel } from "@/components/booking/ReschedulePanel";
 import { ImagePreview } from "@/components/common/ImagePreview";
 import { PremiumButton } from "@/components/common/PremiumButton";
 import { PremiumSurface } from "@/components/common/PremiumSurface";
+import { RequestTimeline } from "@/components/common/RequestTimeline";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { rescheduleClientRequest } from "@/services/api";
 import { theme } from "@/theme";
@@ -62,22 +63,7 @@ export function ClientRequestHistoryCard({ onRescheduled, phone, request }: Clie
 
       {request.imageUrls[0] ? <ImagePreview height={160} uri={request.imageUrls[0]} /> : null}
 
-      {request.timeline?.length ? (
-        <View style={styles.timeline}>
-          <Text style={styles.notesLabel}>Histórico</Text>
-          {request.timeline.slice(-4).map((event) => (
-            <View key={event.id} style={styles.timelineItem}>
-              <View style={styles.timelineDot} />
-              <View style={styles.timelineTextBlock}>
-                <Text style={styles.timelineStatus}>
-                  {event.changedBy === "admin" ? "Atelier" : "Cliente"}: {event.toStatus}
-                </Text>
-                {event.comment ? <Text style={styles.timelineComment}>{event.comment}</Text> : null}
-              </View>
-            </View>
-          ))}
-        </View>
-      ) : null}
+      <RequestTimeline events={request.timeline} limit={4} />
 
       {canReschedule ? (
         <>
@@ -175,40 +161,6 @@ const styles = StyleSheet.create({
   },
   notes: {
     ...theme.typography.body,
-    color: theme.colors.graphite
-  },
-  timeline: {
-    borderColor: theme.colors.line,
-    borderRadius: theme.radius.md,
-    borderWidth: 1,
-    gap: theme.spacing.xs,
-    padding: theme.spacing.md
-  },
-  timelineItem: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    gap: theme.spacing.sm
-  },
-  timelineDot: {
-    backgroundColor: theme.colors.roseGold,
-    borderColor: theme.colors.ivory,
-    borderRadius: theme.radius.pill,
-    borderWidth: 2,
-    height: 12,
-    marginTop: 2,
-    width: 12
-  },
-  timelineTextBlock: {
-    flex: 1,
-    gap: 2
-  },
-  timelineStatus: {
-    ...theme.typography.caption,
-    color: theme.colors.ink,
-    fontWeight: "700"
-  },
-  timelineComment: {
-    ...theme.typography.caption,
     color: theme.colors.graphite
   }
 });
