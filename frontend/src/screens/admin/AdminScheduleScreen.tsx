@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 
 import { AnimatedPressable } from "@/animations/AnimatedPressable";
 import { ElegantInput } from "@/components/common/ElegantInput";
@@ -10,6 +10,7 @@ import { PremiumButton } from "@/components/common/PremiumButton";
 import { PremiumSurface } from "@/components/common/PremiumSurface";
 import { Screen } from "@/components/common/Screen";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import {
   deleteAdminScheduleException,
   fetchAdminScheduleConfig,
@@ -43,7 +44,24 @@ function formatHours(hours?: number[]) {
   return hours.map((hour) => `${String(hour).padStart(2, "0")}:00`).join(", ");
 }
 
+function HourChips({ hours }: { hours?: number[] }) {
+  if (!hours?.length) {
+    return <Text style={styles.hoursEmpty}>Sem horários</Text>;
+  }
+
+  return (
+    <View style={styles.hourList}>
+      {hours.map((hour) => (
+        <View key={hour} style={styles.hourPill}>
+          <Text style={styles.hourPillText}>{String(hour).padStart(2, "0")}:00</Text>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function AdminScheduleScreen() {
+  const { isNarrow } = useResponsiveLayout();
   const [config, setConfig] = useState<ScheduleConfig>();
   const [exceptions, setExceptions] = useState<ScheduleException[]>([]);
   const [loading, setLoading] = useState(true);
@@ -127,11 +145,11 @@ export function AdminScheduleScreen() {
           <Text style={styles.caption}>
             Janela geral: {config.openingTime} às {config.closingTime} · almoço bloqueado: {formatHours(config.lunchBlockHours)}
           </Text>
-          <View style={styles.weekGrid}>
+          <View style={[styles.weekGrid, isNarrow ? styles.weekGridNarrow : null]}>
             {weeklyHours.map(([day, dayHours]) => (
-              <View key={day} style={styles.weekCard}>
+              <View key={day} style={[styles.weekCard, isNarrow ? styles.weekCardNarrow : null]}>
                 <Text style={styles.weekDay}>{weekdayLabels[day]}</Text>
-                <Text style={styles.hours}>{formatHours(dayHours)}</Text>
+                <HourChips hours={dayHours} />
               </View>
             ))}
           </View>
@@ -241,6 +259,9 @@ const styles = StyleSheet.create({
     flexWrap: "wrap",
     gap: theme.spacing.sm
   },
+  weekGridNarrow: {
+    flexDirection: "column"
+  },
   weekCard: {
     backgroundColor: theme.colors.champagneSoft,
     borderColor: theme.colors.line,
@@ -251,13 +272,35 @@ const styles = StyleSheet.create({
     minWidth: 138,
     padding: theme.spacing.sm
   },
+  weekCardNarrow: {
+    minWidth: "100%",
+    width: "100%"
+  },
   weekDay: {
     ...theme.typography.caption,
     color: theme.colors.roseGoldDark,
     fontWeight: "800",
     textTransform: "uppercase"
   },
-  hours: {
+  hourList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.xxs
+  },
+  hourPill: {
+    backgroundColor: theme.colors.ivoryGlass,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: 3
+  },
+  hourPillText: {
+    ...theme.typography.caption,
+    color: theme.colors.ink,
+    fontWeight: "700"
+  },
+  hoursEmpty: {
     ...theme.typography.body,
     color: theme.colors.ink
   },
