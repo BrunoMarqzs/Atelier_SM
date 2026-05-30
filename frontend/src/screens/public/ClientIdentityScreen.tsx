@@ -101,12 +101,20 @@ export function ClientIdentityScreen({ navigation }: Props) {
         </PremiumSurface>
       </FadeInView>
       <FadeInView delay={90}>
-        <PremiumButton
-          disabled={historyLoading}
-          icon="search-outline"
-          label={historyLoading ? "Consultando histórico..." : "Consultar meus pedidos"}
-          onPress={() => void consultHistory()}
-        />
+        <PremiumSurface style={styles.quickActions}>
+          <PremiumButton
+            disabled={historyLoading}
+            icon="search-outline"
+            label={historyLoading ? "Consultando histórico..." : "Consultar meus pedidos"}
+            onPress={() => void consultHistory()}
+          />
+          <PremiumButton
+            icon="add-outline"
+            label="Criar novo pedido"
+            onPress={startNewRequest}
+            variant="secondary"
+          />
+        </PremiumSurface>
       </FadeInView>
 
       {historyLoading ? (
@@ -147,12 +155,6 @@ export function ClientIdentityScreen({ navigation }: Props) {
               title="Nenhum pedido encontrado"
             />
           )}
-          <PremiumButton
-            icon="add-outline"
-            label="Criar novo pedido"
-            onPress={startNewRequest}
-            variant={history.length > 0 ? "secondary" : "primary"}
-          />
         </FadeInView>
       ) : null}
     </Screen>
@@ -167,5 +169,10 @@ const styles = StyleSheet.create({
   history: {
     gap: theme.spacing.md,
     marginTop: theme.spacing.lg
+  },
+  quickActions: {
+    gap: theme.spacing.sm,
+    marginBottom: theme.spacing.md,
+    padding: theme.spacing.sm
   }
 });
