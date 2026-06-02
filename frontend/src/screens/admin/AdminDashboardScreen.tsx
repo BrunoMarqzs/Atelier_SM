@@ -45,7 +45,7 @@ export function AdminDashboardScreen() {
 
   return (
     <Screen>
-      <ScreenHeader subtitle="Visão refinada das prioridades do atelier." title="Painel do atelier" />
+      <ScreenHeader title="Painel do atelier" />
       <LinearGradient
         colors={[theme.colors.ink, theme.colors.burgundy]}
         end={{ x: 1, y: 1 }}
