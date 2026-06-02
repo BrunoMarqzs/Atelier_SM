@@ -84,7 +84,6 @@ export function ClientIdentityScreen({ navigation }: Props) {
     <Screen>
       <ScreenHeader
         onBack={() => navigation.goBack()}
-        subtitle="Sem cadastro. Apenas os dados essenciais para atendimento."
         title="Como podemos te chamar?"
       />
       <FadeInView>

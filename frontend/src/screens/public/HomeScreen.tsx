@@ -39,7 +39,6 @@ export function HomeScreen({ navigation }: HomeProps) {
               <Text style={styles.brandInitials}>SM</Text>
             </View>
             <View style={styles.heroContent}>
-              <Text style={styles.eyebrow}>Atelier de costura premium</Text>
               <Text style={styles.brand}>Atelier Sibele Marques</Text>
               <Text style={styles.slogan}>Um toque de classe</Text>
               <Text style={styles.copy}>
@@ -130,11 +129,6 @@ const styles = StyleSheet.create({
   heroContent: {
     gap: theme.spacing.xs,
     paddingTop: theme.spacing.xl
-  },
-  eyebrow: {
-    ...theme.typography.caption,
-    color: theme.colors.champagne,
-    textTransform: "uppercase"
   },
   brand: {
     ...theme.typography.brand,
