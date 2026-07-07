@@ -1,17 +1,18 @@
 import type { CompositeScreenProps } from "@react-navigation/native";
 import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { LinearGradient } from "expo-linear-gradient";
-import { ImageBackground, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Linking, StyleSheet, Text, View } from "react-native";
 
 import { FadeInView } from "@/animations/FadeInView";
-import { ServiceCard } from "@/components/booking/ServiceCard";
 import { EmptyState } from "@/components/common/EmptyState";
 import { PremiumButton } from "@/components/common/PremiumButton";
+import { PremiumSurface } from "@/components/common/PremiumSurface";
 import { PwaInstallCard } from "@/components/common/PwaInstallCard";
 import { Screen } from "@/components/common/Screen";
 import { useAtelier } from "@/context/AtelierContext";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { theme } from "@/theme";
+import type { AnnouncementKind } from "@/types/domain";
 import type { PublicStackParamList, RootStackParamList } from "@/types/navigation";
 
 const heroImage = require("@/assets/images/atelier-hero-editorial.png");
@@ -21,11 +22,34 @@ type HomeProps = CompositeScreenProps<
   NativeStackScreenProps<RootStackParamList>
 >;
 
+function announcementKindLabel(kind: AnnouncementKind) {
+  if (kind === "promotion") {
+    return "Promoção";
+  }
+  if (kind === "notice") {
+    return "Aviso";
+  }
+  if (kind === "schedule") {
+    return "Agenda";
+  }
+  return "Novidade";
+}
+
 export function HomeScreen({ navigation }: HomeProps) {
-  const { services } = useAtelier();
+  const { announcements } = useAtelier();
   const { height, isCompact } = useResponsiveLayout();
-  const highlightedServices = services.filter((service) => service.highlighted).slice(0, 2);
+  const featuredAnnouncements = announcements.filter((announcement) => announcement.isActive).slice(0, 3);
   const heroHeight = Math.max(isCompact ? 360 : 390, Math.min(430, height * 0.68));
+
+  function handleAnnouncementAction(announcement: (typeof featuredAnnouncements)[number]) {
+    if (announcement.ctaAction === "create_order" || announcement.ctaAction === "client_history") {
+      navigation.navigate("ClientIdentity");
+      return;
+    }
+    if (announcement.ctaAction === "external_url" && announcement.ctaUrl) {
+      void Linking.openURL(announcement.ctaUrl);
+    }
+  }
 
   return (
     <Screen>
@@ -73,22 +97,41 @@ export function HomeScreen({ navigation }: HomeProps) {
       </FadeInView>
 
       <FadeInView delay={180} style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Serviços em destaque</Text>
-        <Text style={styles.sectionCopy}>Escolhas frequentes para peças especiais.</Text>
+        <Text style={styles.sectionTitle}>Novidades do atelier</Text>
+        <Text style={styles.sectionCopy}>Promoções, avisos e agenda em destaque.</Text>
       </FadeInView>
 
       <View style={styles.list}>
-        {highlightedServices.length > 0 ? (
-          highlightedServices.map((service, index) => (
-            <FadeInView delay={240 + index * 80} key={service.id}>
-              <ServiceCard service={service} />
+        {featuredAnnouncements.length > 0 ? (
+          featuredAnnouncements.map((announcement, index) => (
+            <FadeInView delay={240 + index * 80} key={announcement.id}>
+              <PremiumSurface elevated style={styles.announcementCard}>
+                <View style={styles.announcementHeader}>
+                  <Text style={styles.announcementKicker}>{announcementKindLabel(announcement.kind)}</Text>
+                  {announcement.endsAt ? (
+                    <Text style={styles.announcementDate}>
+                      Até {new Date(announcement.endsAt).toLocaleDateString("pt-BR")}
+                    </Text>
+                  ) : null}
+                </View>
+                <Text style={styles.announcementTitle}>{announcement.title}</Text>
+                <Text style={styles.announcementBody}>{announcement.body}</Text>
+                {announcement.ctaAction !== "none" && announcement.ctaLabel ? (
+                  <PremiumButton
+                    icon={announcement.ctaAction === "external_url" ? "open-outline" : "sparkles-outline"}
+                    label={announcement.ctaLabel}
+                    onPress={() => handleAnnouncementAction(announcement)}
+                    variant={index === 0 ? "primary" : "secondary"}
+                  />
+                ) : null}
+              </PremiumSurface>
             </FadeInView>
           ))
         ) : (
           <EmptyState
-            icon="sparkles-outline"
-            message="Os serviços serão exibidos assim que o catálogo estiver sincronizado."
-            title="Catálogo em preparação"
+            icon="megaphone-outline"
+            message="Promoções e avisos importantes aparecerão aqui assim que forem publicados."
+            title="Novidades em preparação"
           />
         )}
       </View>
@@ -182,5 +225,41 @@ const styles = StyleSheet.create({
   },
   list: {
     gap: theme.spacing.md
+  },
+  announcementCard: {
+    gap: theme.spacing.md
+  },
+  announcementHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.xs,
+    justifyContent: "space-between"
+  },
+  announcementKicker: {
+    ...theme.typography.caption,
+    backgroundColor: theme.colors.champagneSoft,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    color: theme.colors.roseGoldDark,
+    fontWeight: "800",
+    overflow: "hidden",
+    paddingHorizontal: theme.spacing.sm,
+    paddingVertical: theme.spacing.xxs,
+    textTransform: "uppercase"
+  },
+  announcementDate: {
+    ...theme.typography.caption,
+    color: theme.colors.taupe,
+    fontWeight: "700"
+  },
+  announcementTitle: {
+    ...theme.typography.title,
+    color: theme.colors.ink
+  },
+  announcementBody: {
+    ...theme.typography.body,
+    color: theme.colors.graphite
   }
 });

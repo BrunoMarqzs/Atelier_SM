@@ -1,6 +1,7 @@
 ﻿import type {
   AppointmentRequest,
   AppointmentStatus,
+  Announcement,
   AuditLog,
   NotificationItem,
   RequestTimelineEvent,
@@ -26,6 +27,22 @@ type BackendService = {
   price_type: "fixed" | "quote";
   fixed_price: string | number | null;
   highlighted: boolean;
+};
+
+type BackendAnnouncement = {
+  id: number;
+  title: string;
+  body: string;
+  kind: Announcement["kind"];
+  cta_label?: string | null;
+  cta_action: Announcement["ctaAction"];
+  cta_url?: string | null;
+  starts_at?: string | null;
+  ends_at?: string | null;
+  priority: number;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
 };
 
 type BackendSlot = {
@@ -171,6 +188,24 @@ function mapService(service: BackendService): Service {
     priceType: service.price_type,
     fixedPrice: service.fixed_price ? Number(service.fixed_price) : undefined,
     highlighted: service.highlighted
+  };
+}
+
+function mapAnnouncement(announcement: BackendAnnouncement): Announcement {
+  return {
+    id: announcement.id,
+    title: announcement.title,
+    body: announcement.body,
+    kind: announcement.kind,
+    ctaLabel: announcement.cta_label ?? undefined,
+    ctaAction: announcement.cta_action,
+    ctaUrl: announcement.cta_url ?? undefined,
+    startsAt: announcement.starts_at ?? undefined,
+    endsAt: announcement.ends_at ?? undefined,
+    priority: announcement.priority,
+    isActive: announcement.is_active,
+    createdAt: announcement.created_at,
+    updatedAt: announcement.updated_at
   };
 }
 
@@ -345,6 +380,15 @@ export async function fetchServices(): Promise<Service[]> {
   return data.map(mapService);
 }
 
+export async function fetchAnnouncements(): Promise<Announcement[]> {
+  const response = await fetch(`${API_BASE_URL}/announcements`);
+  if (!response.ok) {
+    throw new Error("Não foi possível carregar a vitrine do atelier.");
+  }
+  const data = (await response.json()) as BackendAnnouncement[];
+  return data.map(mapAnnouncement);
+}
+
 export async function fetchAvailability(startsAt: string, endsAt: string): Promise<TimeSlot[]> {
   const params = new URLSearchParams({ starts_at: startsAt, ends_at: endsAt });
   const response = await fetch(`${API_BASE_URL}/availability?${params.toString()}`);
@@ -430,6 +474,75 @@ export async function fetchAdminRequests(filters?: {
 
   const data = (await response.json()) as BackendRequest[];
   return data.map(mapRequest);
+}
+
+export async function fetchAdminAnnouncements(): Promise<Announcement[]> {
+  const response = await fetch(`${API_BASE_URL}/admin/announcements`, {
+    headers: adminHeaders()
+  });
+  if (!response.ok) {
+    throw new Error(await apiErrorMessage(response, "Não foi possível carregar os anúncios."));
+  }
+  const data = (await response.json()) as BackendAnnouncement[];
+  return data.map(mapAnnouncement);
+}
+
+export async function createAdminAnnouncement(
+  announcement: Omit<Announcement, "id" | "createdAt" | "updatedAt">
+): Promise<Announcement> {
+  const response = await fetch(`${API_BASE_URL}/admin/announcements`, {
+    method: "POST",
+    headers: adminHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({
+      title: announcement.title,
+      body: announcement.body,
+      kind: announcement.kind,
+      cta_label: announcement.ctaLabel ?? null,
+      cta_action: announcement.ctaAction,
+      cta_url: announcement.ctaUrl ?? null,
+      starts_at: announcement.startsAt ?? null,
+      ends_at: announcement.endsAt ?? null,
+      priority: announcement.priority,
+      is_active: announcement.isActive
+    })
+  });
+  if (!response.ok) {
+    throw new Error(await apiErrorMessage(response, "Não foi possível criar o anúncio."));
+  }
+  return mapAnnouncement((await response.json()) as BackendAnnouncement);
+}
+
+export async function updateAdminAnnouncement(announcement: Announcement): Promise<Announcement> {
+  const response = await fetch(`${API_BASE_URL}/admin/announcements/${announcement.id}`, {
+    method: "PATCH",
+    headers: adminHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({
+      title: announcement.title,
+      body: announcement.body,
+      kind: announcement.kind,
+      cta_label: announcement.ctaLabel ?? null,
+      cta_action: announcement.ctaAction,
+      cta_url: announcement.ctaUrl ?? null,
+      starts_at: announcement.startsAt ?? null,
+      ends_at: announcement.endsAt ?? null,
+      priority: announcement.priority,
+      is_active: announcement.isActive
+    })
+  });
+  if (!response.ok) {
+    throw new Error(await apiErrorMessage(response, "Não foi possível atualizar o anúncio."));
+  }
+  return mapAnnouncement((await response.json()) as BackendAnnouncement);
+}
+
+export async function deactivateAdminAnnouncement(announcementId: number): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/admin/announcements/${announcementId}`, {
+    method: "DELETE",
+    headers: adminHeaders()
+  });
+  if (!response.ok) {
+    throw new Error(await apiErrorMessage(response, "Não foi possível desativar o anúncio."));
+  }
 }
 
 export async function fetchAdminAuditLogs(options?: { requestId?: number; limit?: number }): Promise<AuditLog[]> {
