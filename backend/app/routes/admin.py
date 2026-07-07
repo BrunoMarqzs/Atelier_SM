@@ -7,6 +7,7 @@ from app.commands.availability_commands import BlockSlotCommand
 from app.commands.request_commands import ChangeRequestStatusCommand
 from app.config.database import get_session
 from app.models.enums import AppointmentStatus
+from app.services.announcement_service import AnnouncementService
 from app.services.audit_service import AuditService
 from app.services.availability_service import AvailabilityService
 from app.services.notification_service import NotificationService
@@ -15,6 +16,7 @@ from app.services.request_service import AppointmentRequestService
 from app.services.schedule_policy_service import SchedulePolicyService
 from app.services.service_service import ServiceService
 from app.utils.security import require_admin_user
+from app.validators.announcement import AnnouncementCreate, AnnouncementRead, AnnouncementUpdate
 from app.validators.audit import AuditLogRead
 from app.validators.availability import (
     AvailabilitySlotCreate,
@@ -63,6 +65,46 @@ async def dashboard(session: AsyncSession = Depends(get_session)) -> dict[str, i
             [item for item in requests if item.status == AppointmentStatus.APPROVED]
         ),
     }
+
+
+@router.get("/announcements", response_model=list[AnnouncementRead])
+async def list_admin_announcements(
+    session: AsyncSession = Depends(get_session),
+) -> list[AnnouncementRead]:
+    return await AnnouncementService(session).list_admin()
+
+
+@router.post("/announcements", response_model=AnnouncementRead, status_code=201)
+async def create_announcement(
+    payload: AnnouncementCreate,
+    session: AsyncSession = Depends(get_session),
+) -> AnnouncementRead:
+    announcement = await AnnouncementService(session).create(payload)
+    await session.commit()
+    await session.refresh(announcement)
+    return announcement
+
+
+@router.patch("/announcements/{announcement_id}", response_model=AnnouncementRead)
+async def update_announcement(
+    announcement_id: int,
+    payload: AnnouncementUpdate,
+    session: AsyncSession = Depends(get_session),
+) -> AnnouncementRead:
+    announcement = await AnnouncementService(session).update(announcement_id, payload)
+    await session.commit()
+    await session.refresh(announcement)
+    return announcement
+
+
+@router.delete("/announcements/{announcement_id}", response_model=MessageResponse)
+async def deactivate_announcement(
+    announcement_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> MessageResponse:
+    await AnnouncementService(session).deactivate(announcement_id)
+    await session.commit()
+    return MessageResponse(message="Anúncio desativado com sucesso.")
 
 
 @router.get("/requests", response_model=list[AppointmentRequestRead])
