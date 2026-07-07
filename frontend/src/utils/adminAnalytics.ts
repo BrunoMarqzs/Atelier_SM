@@ -70,6 +70,52 @@ export function estimatedRevenue(requests: AppointmentRequest[]) {
   }, 0);
 }
 
+export function completedRevenue(requests: AppointmentRequest[]) {
+  return estimatedRevenue(requests.filter((request) => request.status === "completed"));
+}
+
+export function averageTicket(requests: AppointmentRequest[]) {
+  const pricedRequests = requests.filter((request) => {
+    const estimatedPrice = Number(request.estimatedPrice ?? 0);
+    return Number.isFinite(estimatedPrice) && estimatedPrice > 0;
+  });
+  if (!pricedRequests.length) {
+    return 0;
+  }
+  return estimatedRevenue(pricedRequests) / pricedRequests.length;
+}
+
+export function completionRate(requests: AppointmentRequest[]) {
+  const finishedRequests = requests.filter((request) =>
+    ["completed", "cancelled", "rejected"].includes(request.status)
+  );
+  if (!finishedRequests.length) {
+    return 0;
+  }
+  const completed = finishedRequests.filter((request) => request.status === "completed").length;
+  return Math.round((completed / finishedRequests.length) * 100);
+}
+
+export function cancellationRate(requests: AppointmentRequest[]) {
+  const decidedRequests = requests.filter((request) =>
+    ["completed", "cancelled", "rejected"].includes(request.status)
+  );
+  if (!decidedRequests.length) {
+    return 0;
+  }
+  const cancelled = decidedRequests.filter((request) =>
+    ["cancelled", "rejected"].includes(request.status)
+  ).length;
+  return Math.round((cancelled / decidedRequests.length) * 100);
+}
+
+export function currentMonthRequests(requests: AppointmentRequest[]) {
+  const now = new Date();
+  const startsAt = new Date(now.getFullYear(), now.getMonth(), 1);
+  const endsAt = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+  return requests.filter((request) => isRequestInPeriod(request, startsAt, endsAt));
+}
+
 export function mostRequestedServices(requests: AppointmentRequest[]) {
   const counts = requests.reduce<Record<string, number>>((accumulator, request) => {
     accumulator[request.serviceName] = (accumulator[request.serviceName] ?? 0) + 1;
@@ -123,6 +169,13 @@ export function operationalAlerts(requests: AppointmentRequest[]) {
   }).length;
 
   return {
+    approvedWithoutBudget: requests.filter(
+      (request) => request.status === "approved" && !request.estimatedPrice
+    ).length,
+    dueTomorrow: requests.filter((request) => {
+      const scheduleDate = requestScheduledDate(request);
+      return Boolean(scheduleDate && isActiveRequest(request) && scheduleDate <= tomorrow);
+    }).length,
     withoutBudget: requests.filter(
       (request) => isActiveRequest(request) && !request.estimatedPrice
     ).length,

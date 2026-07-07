@@ -6,10 +6,14 @@ from app.models.client_profile import ClientProfile
 from app.models.enums import (
     AppointmentStatus,
     AvailabilityStatus,
+    PaymentMethod,
+    PaymentProvider,
+    PaymentStatus,
     PriceType,
     StorageProvider,
 )
 from app.models.notification import Notification
+from app.models.payment import Payment
 from app.models.refresh_token import RefreshToken
 from app.models.request_image import RequestImage
 from app.models.schedule_config import ScheduleConfig
@@ -26,6 +30,10 @@ __all__ = [
     "AvailabilityStatus",
     "ClientProfile",
     "Notification",
+    "Payment",
+    "PaymentMethod",
+    "PaymentProvider",
+    "PaymentStatus",
     "PriceType",
     "RequestImage",
     "RefreshToken",

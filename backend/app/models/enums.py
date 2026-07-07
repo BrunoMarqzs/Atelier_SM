@@ -30,3 +30,20 @@ class AppointmentStatus(StrEnum):
 class StorageProvider(StrEnum):
     LOCAL = "local"
     CLOUDINARY = "cloudinary"
+
+
+class PaymentProvider(StrEnum):
+    MOCK = "mock"
+
+
+class PaymentMethod(StrEnum):
+    PIX = "pix"
+
+
+class PaymentStatus(StrEnum):
+    PENDING = "pending"
+    WAITING_PAYMENT = "waiting_payment"
+    PAID = "paid"
+    EXPIRED = "expired"
+    REFUNDED = "refunded"
+    FAILED = "failed"

@@ -10,6 +10,7 @@ from app.models.enums import AppointmentStatus
 from app.services.audit_service import AuditService
 from app.services.availability_service import AvailabilityService
 from app.services.notification_service import NotificationService
+from app.services.payment_service import PaymentService
 from app.services.request_service import AppointmentRequestService
 from app.services.schedule_policy_service import SchedulePolicyService
 from app.services.service_service import ServiceService
@@ -23,6 +24,7 @@ from app.validators.availability import (
 )
 from app.validators.common import MessageResponse
 from app.validators.notification import NotificationRead
+from app.validators.payment import MockPaymentCreate, PaymentRead, PaymentStatusUpdate
 from app.validators.request import (
     AdminCommentInput,
     AppointmentEstimateInput,
@@ -87,6 +89,38 @@ async def get_request_timeline(
     session: AsyncSession = Depends(get_session),
 ) -> list[StatusHistoryRead]:
     return await AppointmentRequestService(session).list_timeline(request_id)
+
+
+@router.post("/requests/{order_id}/payments", response_model=PaymentRead, status_code=201)
+async def create_mock_payment(
+    order_id: int,
+    payload: MockPaymentCreate,
+    session: AsyncSession = Depends(get_session),
+) -> PaymentRead:
+    payment = await PaymentService(session).create_mock_for_order(order_id, payload)
+    await session.commit()
+    await session.refresh(payment)
+    return payment
+
+
+@router.get("/requests/{order_id}/payment", response_model=PaymentRead)
+async def get_payment_by_order(
+    order_id: int,
+    session: AsyncSession = Depends(get_session),
+) -> PaymentRead:
+    return await PaymentService(session).get_by_order_id(order_id)
+
+
+@router.patch("/payments/{payment_id}/status", response_model=PaymentRead)
+async def update_payment_status(
+    payment_id: int,
+    payload: PaymentStatusUpdate,
+    session: AsyncSession = Depends(get_session),
+) -> PaymentRead:
+    payment = await PaymentService(session).update_status(payment_id, payload)
+    await session.commit()
+    await session.refresh(payment)
+    return payment
 
 
 @router.get("/audit", response_model=list[AuditLogRead])

@@ -10,10 +10,12 @@ from app.config.database import get_session
 from app.models.request_image import RequestImage
 from app.services.availability_service import AvailabilityService
 from app.services.booking_facade import BookingFacade
+from app.services.payment_service import PaymentService
 from app.services.request_service import AppointmentRequestService
 from app.services.service_service import ServiceService
 from app.strategies.storage import get_storage_strategy
 from app.validators.availability import AvailabilitySlotRead
+from app.validators.payment import PaymentRead
 from app.validators.request import (
     AppointmentRequestCreate,
     AppointmentRequestRead,
@@ -73,6 +75,16 @@ async def get_public_request(
     session: AsyncSession = Depends(get_session),
 ) -> AppointmentRequestRead:
     return await AppointmentRequestService(session).get_public_by_code(public_code)
+
+
+@router.get("/requests/public/{public_code}/payment", response_model=PaymentRead)
+async def get_public_request_payment(
+    public_code: str,
+    session: AsyncSession = Depends(get_session),
+) -> PaymentRead:
+    payment = await PaymentService(session).get_by_public_code(public_code)
+    await session.commit()
+    return payment
 
 
 @router.post("/requests/{request_id}/images", response_model=RequestImageRead, status_code=201)

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Alert, Platform, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -18,9 +18,11 @@ import { Screen } from "@/components/common/Screen";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useAtelier } from "@/context/AtelierContext";
+import { createAdminMockPayment, fetchAdminRequestPayment, updateAdminPaymentStatus } from "@/services/api";
 import { theme } from "@/theme";
-import type { AppointmentRequest, AppointmentStatus } from "@/types/domain";
+import type { AppointmentRequest, AppointmentStatus, Payment } from "@/types/domain";
 import { sortRequestsBySchedule } from "@/utils/calendar";
+import { formatMoney } from "@/utils/format";
 
 const statusFilters: Array<{ label: string; value?: AppointmentStatus }> = [
   { label: "Todos" },
@@ -29,6 +31,13 @@ const statusFilters: Array<{ label: string; value?: AppointmentStatus }> = [
   { label: "Orçados", value: "quote_sent" },
   { label: "Aprovados", value: "approved" },
   { label: "Andamento", value: "in_progress" }
+];
+
+const historyStatusFilters: Array<{ label: string; value?: AppointmentStatus }> = [
+  { label: "Todos" },
+  { label: "Concluídos", value: "completed" },
+  { label: "Cancelados", value: "cancelled" },
+  { label: "Recusados", value: "rejected" }
 ];
 
 const allowedStatusTransitions: Record<AppointmentStatus, AppointmentStatus[]> = {
@@ -58,14 +67,18 @@ export function AdminRequestsScreen() {
   const [serviceFilter, setServiceFilter] = useState("");
   const [periodFilter, setPeriodFilter] = useState<"all" | "today" | "week" | "month">("all");
   const [budgetFilter, setBudgetFilter] = useState<"all" | "with_budget" | "without_budget">("all");
+  const [viewMode, setViewMode] = useState<"active" | "history">("active");
+  const [showFilters, setShowFilters] = useState(false);
+  const [hideApproved, setHideApproved] = useState(false);
   const [onlyRescheduled, setOnlyRescheduled] = useState(false);
   const [onlyWithImage, setOnlyWithImage] = useState(false);
   const [comment, setComment] = useState("");
   const [estimate, setEstimate] = useState("");
+  const [selectedPayment, setSelectedPayment] = useState<Payment>();
   const [actionError, setActionError] = useState<string>();
   const [actionSuccess, setActionSuccess] = useState<string>();
   const [actionLoading, setActionLoading] = useState(false);
-  const activeRequests = useMemo(() => {
+  const filteredRequests = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     const now = new Date();
     const startOfToday = new Date(now);
@@ -77,8 +90,13 @@ export function AdminRequestsScreen() {
     const endOfMonth = new Date(endOfToday);
     endOfMonth.setMonth(endOfMonth.getMonth() + 1);
 
+    const historyStatuses: AppointmentStatus[] = ["completed", "cancelled", "rejected"];
+
     return sortRequestsBySchedule(requests)
-      .filter((request) => request.status !== "completed")
+      .filter((request) =>
+        viewMode === "history" ? historyStatuses.includes(request.status) : !historyStatuses.includes(request.status)
+      )
+      .filter((request) => (hideApproved && viewMode === "active" ? request.status !== "approved" : true))
       .filter((request) => (statusFilter ? request.status === statusFilter : true))
       .filter((request) => (serviceFilter ? request.serviceName === serviceFilter : true))
       .filter((request) => {
@@ -126,12 +144,27 @@ export function AdminRequestsScreen() {
           request.adminComment?.toLowerCase().includes(normalizedQuery)
         );
       });
-  }, [budgetFilter, onlyRescheduled, onlyWithImage, periodFilter, query, requests, serviceFilter, statusFilter]);
-  const freshSelectedRequest = requests.find(
-    (request) => request.id === selectedRequest?.id && request.status !== "completed"
-  );
+  }, [budgetFilter, hideApproved, onlyRescheduled, onlyWithImage, periodFilter, query, requests, serviceFilter, statusFilter, viewMode]);
+  const freshSelectedRequest = requests.find((request) => request.id === selectedRequest?.id);
   const canCompleteSelectedRequest =
     freshSelectedRequest?.status === "approved" || freshSelectedRequest?.status === "in_progress";
+  const visibleStatusFilters = viewMode === "history" ? historyStatusFilters : statusFilters;
+
+  async function loadSelectedPayment(requestId: number) {
+    try {
+      setSelectedPayment(await fetchAdminRequestPayment(requestId));
+    } catch {
+      setSelectedPayment(undefined);
+    }
+  }
+
+  useEffect(() => {
+    if (!freshSelectedRequest) {
+      setSelectedPayment(undefined);
+      return;
+    }
+    void loadSelectedPayment(freshSelectedRequest.id);
+  }, [freshSelectedRequest?.id]);
 
   function confirmAction(label: string, onConfirm: () => Promise<void>) {
     if (Platform.OS === "web" && typeof window !== "undefined") {
@@ -201,22 +234,119 @@ export function AdminRequestsScreen() {
     );
   }
 
+  async function createPayment(request: AppointmentRequest) {
+    if (!request.estimatedPrice) {
+      setActionError("Defina um orçamento antes de gerar o Pix.");
+      return;
+    }
+    await runAction(
+      async () => {
+        const payment = await createAdminMockPayment(request.id, request.estimatedPrice ?? 0);
+        setSelectedPayment(payment);
+      },
+      "Não foi possível gerar o pagamento Pix.",
+      "Pagamento Pix gerado para a cliente."
+    );
+  }
+
+  async function markPaymentAsPaid(payment: Payment) {
+    await runAction(
+      async () => {
+        setSelectedPayment(await updateAdminPaymentStatus(payment.id, "paid"));
+      },
+      "Não foi possível confirmar o pagamento.",
+      "Pagamento confirmado manualmente."
+    );
+  }
+
+  function clearFilters() {
+    setStatusFilter(undefined);
+    setServiceFilter("");
+    setPeriodFilter("all");
+    setBudgetFilter("all");
+    setOnlyRescheduled(false);
+    setOnlyWithImage(false);
+  }
+
   return (
     <Screen>
       <ScreenHeader subtitle="Filtre, avalie, comente, aprove e acompanhe cada solicitação." title="Pedidos" />
       <PremiumSurface style={styles.filters}>
         <View style={styles.filterHeader}>
-          <Text style={styles.filterTitle}>{activeRequests.length} pedido(s) na fila</Text>
-          <Text style={styles.filterSubtitle}>Busca e status para avaliação rápida</Text>
+          <View style={styles.filterTitleBlock}>
+            <Text style={styles.filterTitle}>
+              {filteredRequests.length} {viewMode === "history" ? "pedido(s) no histórico" : "pedido(s) na fila"}
+            </Text>
+            <Text style={styles.filterSubtitle}>
+              {viewMode === "history"
+                ? "Consulte pedidos encerrados por nome, telefone ou serviço"
+                : "Acompanhe pedidos ativos e oculte aprovados quando precisar"}
+            </Text>
+          </View>
+          <AnimatedPressable
+            accessibilityLabel={showFilters ? "Fechar filtros" : "Abrir filtros"}
+            accessibilityRole="button"
+            onPress={() => setShowFilters((current) => !current)}
+            pressedScale={0.95}
+            style={[styles.filterToggle, showFilters ? styles.filterToggleActive : null]}
+          >
+            <Ionicons
+              color={showFilters ? theme.colors.white : theme.colors.roseGoldDark}
+              name="options-outline"
+              size={18}
+            />
+            <Text style={[styles.filterToggleText, showFilters ? styles.filterTextActive : null]}>Filtros</Text>
+          </AnimatedPressable>
         </View>
         <ElegantInput
           label="Buscar"
           onChangeText={setQuery}
-          placeholder="Nome ou telefone da cliente"
+          placeholder={viewMode === "history" ? "Pesquisar no histórico por nome ou telefone" : "Nome ou telefone da cliente"}
           value={query}
         />
         <View style={styles.filterRow}>
-          {statusFilters.map((filter) => {
+          <AnimatedPressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: viewMode === "active" }}
+            onPress={() => {
+              setViewMode("active");
+              setStatusFilter(undefined);
+              setSelectedRequest(undefined);
+            }}
+            pressedScale={0.95}
+            style={[styles.filterPill, viewMode === "active" ? styles.filterPillActive : null]}
+          >
+            <Text style={[styles.filterText, viewMode === "active" ? styles.filterTextActive : null]}>Fila ativa</Text>
+          </AnimatedPressable>
+          <AnimatedPressable
+            accessibilityRole="button"
+            accessibilityState={{ selected: viewMode === "history" }}
+            onPress={() => {
+              setViewMode("history");
+              setStatusFilter(undefined);
+              setSelectedRequest(undefined);
+            }}
+            pressedScale={0.95}
+            style={[styles.filterPill, viewMode === "history" ? styles.filterPillActive : null]}
+          >
+            <Text style={[styles.filterText, viewMode === "history" ? styles.filterTextActive : null]}>Histórico</Text>
+          </AnimatedPressable>
+          {viewMode === "active" ? (
+            <AnimatedPressable
+              accessibilityRole="button"
+              accessibilityState={{ selected: hideApproved }}
+              onPress={() => setHideApproved((current) => !current)}
+              pressedScale={0.95}
+              style={[styles.filterPill, hideApproved ? styles.filterPillActive : null]}
+            >
+              <Text style={[styles.filterText, hideApproved ? styles.filterTextActive : null]}>Ocultar aprovados</Text>
+            </AnimatedPressable>
+          ) : null}
+        </View>
+        {showFilters ? (
+          <View style={styles.advancedFilters}>
+            <View style={styles.filterRow}>
+          {visibleStatusFilters.map((filter) => {
             const active = statusFilter === filter.value;
             return (
               <AnimatedPressable
@@ -334,13 +464,24 @@ export function AdminRequestsScreen() {
             </AnimatedPressable>
           ))}
         </View>
+        <AnimatedPressable
+          accessibilityRole="button"
+          onPress={clearFilters}
+          pressedScale={0.97}
+          style={styles.clearFiltersButton}
+        >
+          <Ionicons color={theme.colors.roseGoldDark} name="refresh-outline" size={18} />
+          <Text style={styles.clearFiltersText}>Limpar filtros</Text>
+        </AnimatedPressable>
+          </View>
+        ) : null}
       </PremiumSurface>
       {actionError ? <Notice message={actionError} title="Ação não concluída" tone="danger" /> : null}
       {actionSuccess ? <Notice message={actionSuccess} title="Tudo certo" tone="success" /> : null}
 
       <View style={styles.list}>
-        {activeRequests.length > 0 ? (
-          activeRequests.map((request, index) => (
+        {filteredRequests.length > 0 ? (
+          filteredRequests.map((request, index) => (
             <FadeInView delay={index * 45} key={request.id}>
               <AnimatedPressable
                 accessibilityLabel={`Abrir pedido de ${request.clientName}, ${request.serviceName}`}
@@ -359,7 +500,11 @@ export function AdminRequestsScreen() {
         ) : (
           <EmptyState
             icon="file-tray-outline"
-            message="Ajuste os filtros ou aguarde novas solicitações chegarem pelo fluxo da cliente."
+            message={
+              viewMode === "history"
+                ? "Use a busca para localizar pedidos antigos por nome, telefone ou serviço."
+                : "Ajuste os filtros ou aguarde novas solicitações chegarem pelo fluxo da cliente."
+            }
             title="Nenhum pedido encontrado"
           />
         )}
@@ -391,6 +536,48 @@ export function AdminRequestsScreen() {
           </View>
 
           <WhatsAppNotifyButton request={freshSelectedRequest} />
+
+          <View style={styles.paymentBox}>
+            <View style={styles.infoHeader}>
+              <Ionicons color={theme.colors.roseGoldDark} name="qr-code-outline" size={22} />
+              <Text style={styles.infoKicker}>Pagamento Pix</Text>
+            </View>
+            {selectedPayment ? (
+              <>
+                <Text style={styles.infoText}>Valor: {formatMoney(selectedPayment.amount)}</Text>
+                <Text style={styles.infoText}>Status: {selectedPayment.status}</Text>
+                {selectedPayment.expiresAt ? (
+                  <Text style={styles.infoText}>
+                    Expira em: {new Date(selectedPayment.expiresAt).toLocaleString("pt-BR")}
+                  </Text>
+                ) : null}
+                <View style={styles.inlineActions}>
+                  <PremiumButton
+                    disabled={selectedPayment.status !== "waiting_payment" || actionLoading}
+                    icon="checkmark-circle-outline"
+                    label="Confirmar pagamento"
+                    onPress={() =>
+                      confirmAction("Confirmar pagamento deste pedido?", () => markPaymentAsPaid(selectedPayment))
+                    }
+                    variant="secondary"
+                  />
+                </View>
+              </>
+            ) : (
+              <>
+                <Text style={styles.infoText}>
+                  Gere um Pix de teste para a cliente visualizar na consulta do pedido.
+                </Text>
+                <PremiumButton
+                  disabled={!freshSelectedRequest.estimatedPrice || actionLoading}
+                  icon="qr-code-outline"
+                  label="Gerar Pix de teste"
+                  onPress={() => void createPayment(freshSelectedRequest)}
+                  variant="secondary"
+                />
+              </>
+            )}
+          </View>
 
           {freshSelectedRequest.notes ? (
             <View style={styles.notesBox}>
@@ -553,7 +740,14 @@ const styles = StyleSheet.create({
     marginBottom: theme.spacing.lg
   },
   filterHeader: {
+    alignItems: "flex-start",
+    flexDirection: "row",
     gap: theme.spacing.xxs
+  },
+  filterTitleBlock: {
+    flex: 1,
+    gap: theme.spacing.xxs,
+    minWidth: 220
   },
   filterTitle: {
     ...theme.typography.section,
@@ -567,6 +761,30 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: theme.spacing.xs
+  },
+  advancedFilters: {
+    gap: theme.spacing.sm
+  },
+  filterToggle: {
+    alignItems: "center",
+    backgroundColor: theme.colors.ivoryGlass,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: theme.spacing.xs,
+    minHeight: 40,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs
+  },
+  filterToggleActive: {
+    backgroundColor: theme.colors.ink,
+    borderColor: theme.colors.ink
+  },
+  filterToggleText: {
+    ...theme.typography.caption,
+    color: theme.colors.roseGoldDark,
+    fontWeight: "800"
   },
   filterPill: {
     backgroundColor: theme.colors.ivoryGlass,
@@ -590,6 +808,20 @@ const styles = StyleSheet.create({
   },
   filterTextActive: {
     color: theme.colors.white
+  },
+  clearFiltersButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    gap: theme.spacing.xs,
+    minHeight: 40,
+    paddingHorizontal: theme.spacing.xs,
+    paddingVertical: theme.spacing.xs
+  },
+  clearFiltersText: {
+    ...theme.typography.caption,
+    color: theme.colors.roseGoldDark,
+    fontWeight: "800"
   },
   list: {
     gap: theme.spacing.md
@@ -642,6 +874,14 @@ const styles = StyleSheet.create({
   infoText: {
     ...theme.typography.body,
     color: theme.colors.graphite
+  },
+  paymentBox: {
+    backgroundColor: theme.colors.champagneSoft,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    gap: theme.spacing.sm,
+    padding: theme.spacing.md
   },
   notesBox: {
     backgroundColor: theme.colors.porcelain,

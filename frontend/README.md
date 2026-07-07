@@ -19,6 +19,19 @@ npm.cmd install
 npm.cmd run web
 ```
 
+Para testar modificações localmente sem mexer no site publicado:
+
+```powershell
+cd frontend
+npm.cmd run web:test
+```
+
+Abra no navegador:
+
+```text
+http://localhost:8084
+```
+
 Para verificar tipos:
 
 ```powershell

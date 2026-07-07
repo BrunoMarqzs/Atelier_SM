@@ -38,3 +38,4 @@ class AppointmentRequest(TimestampMixin, Base):
     status_history = relationship(
         "StatusHistory", back_populates="request", cascade="all, delete-orphan"
     )
+    payments = relationship("Payment", back_populates="order", cascade="all, delete-orphan")

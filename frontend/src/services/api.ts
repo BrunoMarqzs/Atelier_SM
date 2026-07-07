@@ -3,6 +3,7 @@
   AppointmentStatus,
   AuditLog,
   NotificationItem,
+  Payment,
   RequestTimelineEvent,
   ScheduleConfig,
   ScheduleException,
@@ -93,6 +94,22 @@ type BackendNotification = {
   request_id?: number | null;
   read_at?: string | null;
   created_at: string;
+};
+
+type BackendPayment = {
+  id: number;
+  order_id: number;
+  provider: "mock";
+  method: "pix";
+  status: Payment["status"];
+  amount: string | number;
+  pix_qr_code?: string | null;
+  pix_copy_paste?: string | null;
+  external_payment_id?: string | null;
+  paid_at?: string | null;
+  expires_at?: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 type BackendScheduleConfig = {
@@ -223,6 +240,24 @@ function mapNotification(notification: BackendNotification): NotificationItem {
     requestId: notification.request_id ?? undefined,
     readAt: notification.read_at ?? undefined,
     createdAt: notification.created_at
+  };
+}
+
+function mapPayment(payment: BackendPayment): Payment {
+  return {
+    id: payment.id,
+    orderId: payment.order_id,
+    provider: payment.provider,
+    method: payment.method,
+    status: payment.status,
+    amount: Number(payment.amount),
+    pixQrCode: payment.pix_qr_code ?? undefined,
+    pixCopyPaste: payment.pix_copy_paste ?? undefined,
+    externalPaymentId: payment.external_payment_id ?? undefined,
+    paidAt: payment.paid_at ?? undefined,
+    expiresAt: payment.expires_at ?? undefined,
+    createdAt: payment.created_at,
+    updatedAt: payment.updated_at
   };
 }
 
@@ -557,6 +592,58 @@ export async function fetchPublicRequest(publicCode: string): Promise<Appointmen
   }
 
   return mapRequest((await response.json()) as BackendRequest);
+}
+
+export async function fetchPublicRequestPayment(publicCode: string): Promise<Payment | undefined> {
+  const response = await fetch(`${API_BASE_URL}/requests/public/${encodeURIComponent(publicCode)}/payment`);
+  if (response.status === 404) {
+    return undefined;
+  }
+  if (!response.ok) {
+    throw new Error(await apiErrorMessage(response, "Não foi possível carregar o pagamento."));
+  }
+
+  return mapPayment((await response.json()) as BackendPayment);
+}
+
+export async function fetchAdminRequestPayment(orderId: number): Promise<Payment | undefined> {
+  const response = await fetch(`${API_BASE_URL}/admin/requests/${orderId}/payment`, {
+    headers: adminHeaders()
+  });
+  if (response.status === 404) {
+    return undefined;
+  }
+  if (!response.ok) {
+    throw new Error(await apiErrorMessage(response, "Não foi possível carregar o pagamento."));
+  }
+
+  return mapPayment((await response.json()) as BackendPayment);
+}
+
+export async function createAdminMockPayment(orderId: number, amount: number): Promise<Payment> {
+  const response = await fetch(`${API_BASE_URL}/admin/requests/${orderId}/payments`, {
+    method: "POST",
+    headers: adminHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ amount })
+  });
+  if (!response.ok) {
+    throw new Error(await apiErrorMessage(response, "Não foi possível criar o pagamento Pix."));
+  }
+
+  return mapPayment((await response.json()) as BackendPayment);
+}
+
+export async function updateAdminPaymentStatus(paymentId: number, status: Payment["status"]): Promise<Payment> {
+  const response = await fetch(`${API_BASE_URL}/admin/payments/${paymentId}/status`, {
+    method: "PATCH",
+    headers: adminHeaders({ "Content-Type": "application/json" }),
+    body: JSON.stringify({ status })
+  });
+  if (!response.ok) {
+    throw new Error(await apiErrorMessage(response, "Não foi possível atualizar o pagamento."));
+  }
+
+  return mapPayment((await response.json()) as BackendPayment);
 }
 
 export async function updateAdminRequestStatus(

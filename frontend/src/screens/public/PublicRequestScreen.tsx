@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { FadeInView } from "@/animations/FadeInView";
+import { PixPaymentPanel } from "@/components/client/PixPaymentPanel";
 import { EmptyState } from "@/components/common/EmptyState";
 import { ImagePreview } from "@/components/common/ImagePreview";
 import { LoadingState } from "@/components/common/LoadingState";
@@ -14,9 +15,9 @@ import { RequestTimeline } from "@/components/common/RequestTimeline";
 import { Screen } from "@/components/common/Screen";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { fetchPublicRequest } from "@/services/api";
+import { fetchPublicRequest, fetchPublicRequestPayment } from "@/services/api";
 import { theme } from "@/theme";
-import type { AppointmentRequest } from "@/types/domain";
+import type { AppointmentRequest, Payment } from "@/types/domain";
 import type { PublicStackParamList } from "@/types/navigation";
 import { formatMoney } from "@/utils/format";
 
@@ -24,6 +25,7 @@ type Props = NativeStackScreenProps<PublicStackParamList, "PublicRequest">;
 
 export function PublicRequestScreen({ navigation, route }: Props) {
   const [request, setRequest] = useState<AppointmentRequest>();
+  const [payment, setPayment] = useState<Payment>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -31,9 +33,16 @@ export function PublicRequestScreen({ navigation, route }: Props) {
     setLoading(true);
     setError("");
     try {
-      setRequest(await fetchPublicRequest(route.params.code));
+      const loadedRequest = await fetchPublicRequest(route.params.code);
+      setRequest(loadedRequest);
+      try {
+        setPayment(await fetchPublicRequestPayment(route.params.code));
+      } catch {
+        setPayment(undefined);
+      }
     } catch (caughtError) {
       setRequest(undefined);
+      setPayment(undefined);
       setError(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar este pedido.");
     } finally {
       setLoading(false);
@@ -79,6 +88,8 @@ export function PublicRequestScreen({ navigation, route }: Props) {
                 </Text>
               </View>
             </View>
+
+            <PixPaymentPanel onExpired={() => void loadRequest()} payment={payment} />
 
             {request.adminComment ? (
               <View style={styles.highlightBox}>

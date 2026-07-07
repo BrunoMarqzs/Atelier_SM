@@ -1,16 +1,17 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
+import { PixPaymentPanel } from "@/components/client/PixPaymentPanel";
 import { ReschedulePanel } from "@/components/booking/ReschedulePanel";
 import { ImagePreview } from "@/components/common/ImagePreview";
 import { PremiumButton } from "@/components/common/PremiumButton";
 import { PremiumSurface } from "@/components/common/PremiumSurface";
 import { RequestTimeline } from "@/components/common/RequestTimeline";
 import { StatusBadge } from "@/components/common/StatusBadge";
-import { rescheduleClientRequest } from "@/services/api";
+import { fetchPublicRequestPayment, rescheduleClientRequest } from "@/services/api";
 import { theme } from "@/theme";
-import type { AppointmentRequest } from "@/types/domain";
+import type { AppointmentRequest, Payment } from "@/types/domain";
 import { formatMoney } from "@/utils/format";
 
 type ClientRequestHistoryCardProps = {
@@ -21,7 +22,24 @@ type ClientRequestHistoryCardProps = {
 
 export function ClientRequestHistoryCard({ onRescheduled, phone, request }: ClientRequestHistoryCardProps) {
   const [rescheduling, setRescheduling] = useState(false);
+  const [payment, setPayment] = useState<Payment>();
   const canReschedule = !["completed", "cancelled", "rejected"].includes(request.status);
+
+  async function loadPayment() {
+    if (!request.publicCode) {
+      setPayment(undefined);
+      return;
+    }
+    try {
+      setPayment(await fetchPublicRequestPayment(request.publicCode));
+    } catch {
+      setPayment(undefined);
+    }
+  }
+
+  useEffect(() => {
+    void loadPayment();
+  }, [request.publicCode]);
 
   return (
     <PremiumSurface style={styles.card}>
@@ -46,6 +64,8 @@ export function ClientRequestHistoryCard({ onRescheduled, phone, request }: Clie
           <Text style={styles.infoText}>Acompanhamento: {request.publicCode}</Text>
         </View>
       ) : null}
+
+      <PixPaymentPanel onExpired={() => void loadPayment()} payment={payment} />
 
       {request.adminComment ? (
         <View style={styles.commentBox}>

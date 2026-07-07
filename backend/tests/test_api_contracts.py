@@ -141,6 +141,27 @@ def test_public_request_endpoint_returns_request_by_code(monkeypatch) -> None:
     assert body["public_url"].endswith("/pedido/ABC123XYZ0")
 
 
+def test_public_request_payment_endpoint_returns_read_only_payment(monkeypatch) -> None:
+    class FakePaymentService:
+        def __init__(self, session) -> None:
+            self.session = session
+
+        async def get_by_public_code(self, public_code):
+            assert public_code == "ABC123XYZ0"
+            return payment_response()
+
+    monkeypatch.setattr(public, "PaymentService", FakePaymentService)
+    client = build_client()
+
+    response = client.get("/api/requests/public/ABC123XYZ0/payment")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["provider"] == "mock"
+    assert body["method"] == "pix"
+    assert body["status"] == "waiting_payment"
+
+
 def test_public_image_file_endpoint_serves_database_image() -> None:
     FakeSession.image_by_id = {
         7: SimpleNamespace(
@@ -353,3 +374,98 @@ def test_admin_schedule_exception_endpoint_upserts_closed_day(monkeypatch) -> No
     body = response.json()
     assert body["exception_date"] == "2026-12-24"
     assert body["kind"] == "closed"
+
+
+def payment_response(status: str = "waiting_payment") -> dict:
+    return {
+        "id": 7,
+        "order_id": 99,
+        "provider": "mock",
+        "method": "pix",
+        "status": status,
+        "amount": Decimal("120.00"),
+        "pix_qr_code": None,
+        "pix_copy_paste": "pix-copia-e-cola",
+        "external_payment_id": None,
+        "paid_at": None,
+        "expires_at": None,
+        "created_at": "2026-07-06T10:00:00Z",
+        "updated_at": "2026-07-06T10:00:00Z",
+    }
+
+
+def test_admin_create_mock_payment_for_order(monkeypatch) -> None:
+    class FakePaymentService:
+        def __init__(self, session) -> None:
+            self.session = session
+
+        async def create_mock_for_order(self, order_id, payload):
+            assert order_id == 99
+            assert payload.amount == Decimal("120.00")
+            assert payload.pix_copy_paste == "pix-copia-e-cola"
+            return payment_response()
+
+    async def fake_admin_user():
+        return object()
+
+    monkeypatch.setattr(admin, "PaymentService", FakePaymentService)
+    client = build_client()
+    client.app.dependency_overrides[require_admin_user] = fake_admin_user
+
+    response = client.post(
+        "/api/admin/requests/99/payments",
+        json={"amount": "120.00", "pix_copy_paste": "pix-copia-e-cola"},
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["order_id"] == 99
+    assert body["provider"] == "mock"
+    assert body["method"] == "pix"
+    assert body["status"] == "waiting_payment"
+    assert body["amount"] == "120.00"
+
+
+def test_admin_get_payment_by_order(monkeypatch) -> None:
+    class FakePaymentService:
+        def __init__(self, session) -> None:
+            self.session = session
+
+        async def get_by_order_id(self, order_id):
+            assert order_id == 99
+            return payment_response()
+
+    async def fake_admin_user():
+        return object()
+
+    monkeypatch.setattr(admin, "PaymentService", FakePaymentService)
+    client = build_client()
+    client.app.dependency_overrides[require_admin_user] = fake_admin_user
+
+    response = client.get("/api/admin/requests/99/payment")
+
+    assert response.status_code == 200
+    assert response.json()["id"] == 7
+
+
+def test_admin_update_payment_status(monkeypatch) -> None:
+    class FakePaymentService:
+        def __init__(self, session) -> None:
+            self.session = session
+
+        async def update_status(self, payment_id, payload):
+            assert payment_id == 7
+            assert payload.status.value == "paid"
+            return payment_response(status="paid") | {"paid_at": "2026-07-06T10:05:00Z"}
+
+    async def fake_admin_user():
+        return object()
+
+    monkeypatch.setattr(admin, "PaymentService", FakePaymentService)
+    client = build_client()
+    client.app.dependency_overrides[require_admin_user] = fake_admin_user
+
+    response = client.patch("/api/admin/payments/7/status", json={"status": "paid"})
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "paid"

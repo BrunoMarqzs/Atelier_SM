@@ -54,6 +54,24 @@ export type AppointmentRequest = {
   timeline?: RequestTimelineEvent[];
 };
 
+export type PaymentStatus = "pending" | "waiting_payment" | "paid" | "expired" | "refunded" | "failed";
+
+export type Payment = {
+  id: number;
+  orderId: number;
+  provider: "mock";
+  method: "pix";
+  status: PaymentStatus;
+  amount: number;
+  pixQrCode?: string;
+  pixCopyPaste?: string;
+  externalPaymentId?: string;
+  paidAt?: string;
+  expiresAt?: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type RequestTimelineEvent = {
   id: number;
   fromStatus?: AppointmentStatus;

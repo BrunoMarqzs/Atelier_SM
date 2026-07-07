@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useMemo, useState } from "react";
+import { StyleSheet, Text, View } from "react-native";
 
+import { AnimatedPressable } from "@/animations/AnimatedPressable";
 import { EmptyState } from "@/components/common/EmptyState";
 import { LoadingState } from "@/components/common/LoadingState";
 import { Notice } from "@/components/common/Notice";
@@ -13,10 +14,58 @@ import { fetchAdminNotifications, markAdminNotificationRead } from "@/services/a
 import { theme } from "@/theme";
 import type { NotificationItem } from "@/types/domain";
 
+type NotificationFilter = "all" | "unread" | "critical" | "payments" | "schedule";
+
+const FILTERS: Array<{ label: string; value: NotificationFilter }> = [
+  { label: "Todos", value: "all" },
+  { label: "Não lidos", value: "unread" },
+  { label: "Críticos", value: "critical" },
+  { label: "Pagamentos", value: "payments" },
+  { label: "Agenda", value: "schedule" }
+];
+
+function notificationText(item: NotificationItem) {
+  return `${item.eventType} ${item.title} ${item.message}`.toLowerCase();
+}
+
+function isCriticalNotification(item: NotificationItem) {
+  const text = notificationText(item);
+  return ["expired", "expirado", "pendente", "overdue", "atras", "recus", "cancel"].some((term) =>
+    text.includes(term)
+  );
+}
+
+function isPaymentNotification(item: NotificationItem) {
+  const text = notificationText(item);
+  return ["payment", "pagamento", "pix", "orçamento", "orcamento"].some((term) => text.includes(term));
+}
+
+function isScheduleNotification(item: NotificationItem) {
+  const text = notificationText(item);
+  return ["schedule", "agenda", "remarc", "horário", "horario"].some((term) => text.includes(term));
+}
+
+function emptyMessage(filter: NotificationFilter) {
+  if (filter === "unread") {
+    return "Todos os avisos já foram lidos.";
+  }
+  if (filter === "critical") {
+    return "Nenhum evento crítico apareceu até agora.";
+  }
+  if (filter === "payments") {
+    return "Avisos de Pix, orçamento e pagamento aparecerão aqui.";
+  }
+  if (filter === "schedule") {
+    return "Remarcações e mudanças de agenda aparecerão aqui.";
+  }
+  return "Pedidos, orçamentos, aprovações e remarcações aparecerão aqui.";
+}
+
 export function AdminNotificationsScreen() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [filter, setFilter] = useState<NotificationFilter>("all");
 
   async function loadNotifications() {
     setLoading(true);
@@ -40,19 +89,78 @@ export function AdminNotificationsScreen() {
   }, []);
 
   const unreadCount = notifications.filter((item) => !item.readAt).length;
+  const criticalCount = notifications.filter(isCriticalNotification).length;
+  const paymentCount = notifications.filter(isPaymentNotification).length;
+  const scheduleCount = notifications.filter(isScheduleNotification).length;
+  const filteredNotifications = useMemo(() => {
+    if (filter === "unread") {
+      return notifications.filter((item) => !item.readAt);
+    }
+    if (filter === "critical") {
+      return notifications.filter(isCriticalNotification);
+    }
+    if (filter === "payments") {
+      return notifications.filter(isPaymentNotification);
+    }
+    if (filter === "schedule") {
+      return notifications.filter(isScheduleNotification);
+    }
+    return notifications;
+  }, [filter, notifications]);
 
   return (
     <Screen>
       <ScreenHeader
         subtitle={`${unreadCount} aviso(s) aguardando leitura.`}
-        title="Notificações"
+        title="Avisos"
       />
-      <PremiumButton icon="refresh-outline" label="Atualizar notificações" onPress={() => void loadNotifications()} variant="secondary" />
+      <PremiumButton
+        icon="refresh-outline"
+        label="Atualizar avisos"
+        onPress={() => void loadNotifications()}
+        variant="secondary"
+      />
       {loading ? <LoadingState compact message="Buscando eventos do atelier." title="Carregando avisos" /> : null}
-      {error ? <Notice message={error} title="Notificações indisponíveis" tone="danger" /> : null}
+      {error ? <Notice message={error} title="Avisos indisponíveis" tone="danger" /> : null}
+
+      <View style={styles.summaryRow}>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{unreadCount}</Text>
+          <Text style={styles.summaryLabel}>Não lidos</Text>
+        </View>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{criticalCount}</Text>
+          <Text style={styles.summaryLabel}>Críticos</Text>
+        </View>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{paymentCount}</Text>
+          <Text style={styles.summaryLabel}>Pagamentos</Text>
+        </View>
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryValue}>{scheduleCount}</Text>
+          <Text style={styles.summaryLabel}>Agenda</Text>
+        </View>
+      </View>
+
+      <View style={styles.filterRow}>
+        {FILTERS.map((item) => {
+          const active = filter === item.value;
+          return (
+            <AnimatedPressable
+              key={item.value}
+              onPress={() => setFilter(item.value)}
+              pressedScale={0.96}
+              style={[styles.filterPill, active ? styles.filterPillActive : null]}
+            >
+              <Text style={[styles.filterText, active ? styles.filterTextActive : null]}>{item.label}</Text>
+            </AnimatedPressable>
+          );
+        })}
+      </View>
+
       <View style={styles.list}>
-        {notifications.length > 0 ? (
-          notifications.map((notification) => (
+        {filteredNotifications.length > 0 ? (
+          filteredNotifications.map((notification) => (
             <PremiumSurface key={notification.id} style={notification.readAt ? styles.readCard : styles.card}>
               <View style={styles.header}>
                 <View style={styles.icon}>
@@ -82,11 +190,7 @@ export function AdminNotificationsScreen() {
             </PremiumSurface>
           ))
         ) : (
-          <EmptyState
-            icon="notifications-outline"
-            message="Pedidos, orçamentos, aprovações e remarcações aparecerão aqui."
-            title="Nenhuma notificação"
-          />
+          <EmptyState icon="notifications-outline" message={emptyMessage(filter)} title="Nenhum aviso neste filtro" />
         )}
       </View>
     </Screen>
@@ -94,6 +198,60 @@ export function AdminNotificationsScreen() {
 }
 
 const styles = StyleSheet.create({
+  summaryRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.sm,
+    marginTop: theme.spacing.md
+  },
+  summaryCard: {
+    backgroundColor: theme.colors.ivoryGlass,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.md,
+    borderWidth: 1,
+    flexGrow: 1,
+    minWidth: 132,
+    padding: theme.spacing.md,
+    ...theme.shadows.soft
+  },
+  summaryValue: {
+    ...theme.typography.title,
+    color: theme.colors.ink
+  },
+  summaryLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.graphite,
+    fontWeight: "700"
+  },
+  filterRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: theme.spacing.xs,
+    marginTop: theme.spacing.md
+  },
+  filterPill: {
+    backgroundColor: theme.colors.ivoryGlass,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.pill,
+    borderWidth: 1,
+    minHeight: 40,
+    paddingHorizontal: theme.spacing.md,
+    paddingVertical: theme.spacing.xs,
+    ...theme.shadows.soft
+  },
+  filterPillActive: {
+    backgroundColor: theme.colors.ink,
+    borderColor: theme.colors.ink,
+    ...theme.shadows.button
+  },
+  filterText: {
+    ...theme.typography.caption,
+    color: theme.colors.graphite,
+    fontWeight: "700"
+  },
+  filterTextActive: {
+    color: theme.colors.white
+  },
   list: {
     gap: theme.spacing.md,
     marginTop: theme.spacing.md

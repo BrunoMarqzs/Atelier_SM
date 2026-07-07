@@ -14,7 +14,11 @@ import { useAtelier } from "@/context/AtelierContext";
 import { theme } from "@/theme";
 import type { AppointmentRequest } from "@/types/domain";
 import {
+  averageTicket,
   busiestHours,
+  cancellationRate,
+  completedRevenue,
+  completionRate,
   estimatedRevenue,
   formatMoney,
   mostRequestedServices,
@@ -55,6 +59,10 @@ export function AdminReportsScreen() {
   const revenue = estimatedRevenue(
     filteredRequests.filter((request) => !["cancelled", "rejected"].includes(request.status))
   );
+  const realizedRevenue = completedRevenue(filteredRequests);
+  const ticket = averageTicket(filteredRequests);
+  const completion = completionRate(filteredRequests);
+  const cancellation = cancellationRate(filteredRequests);
   const serviceRanking = mostRequestedServices(filteredRequests).slice(0, 5);
   const hourRanking = busiestHours(filteredRequests).slice(0, 5);
 
@@ -105,6 +113,18 @@ export function AdminReportsScreen() {
         <AdminMetric icon="checkmark-done-outline" label="Concluídos" value={String(counts.completed)} />
         <AdminMetric icon="close-circle-outline" label="Cancelados" value={String(counts.cancelled + counts.rejected)} />
       </View>
+
+      <PremiumSurface style={styles.section}>
+        <Text style={styles.sectionTitle}>Produtividade</Text>
+        <View style={styles.metricsRow}>
+          <AdminMetric icon="wallet-outline" label="Receita concluída" value={formatMoney(realizedRevenue)} />
+          <AdminMetric icon="pricetag-outline" label="Ticket médio" value={formatMoney(ticket)} />
+        </View>
+        <View style={styles.ranking}>
+          <AdminInsightCard icon="checkmark-done-outline" label="Taxa de conclusão" tone="sage" value={`${completion}%`} />
+          <AdminInsightCard icon="close-circle-outline" label="Cancelamento/recusa" value={`${cancellation}%`} />
+        </View>
+      </PremiumSurface>
 
       <PremiumSurface style={styles.section}>
         <Text style={styles.sectionTitle}>Exportar</Text>

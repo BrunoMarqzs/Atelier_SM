@@ -16,7 +16,12 @@ import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { theme } from "@/theme";
 import type { RootStackParamList } from "@/types/navigation";
 import {
+  averageTicket,
   busiestHours,
+  cancellationRate,
+  completedRevenue,
+  completionRate,
+  currentMonthRequests,
   estimatedRevenue,
   formatMoney,
   operationalAlerts,
@@ -42,6 +47,15 @@ export function AdminDashboardScreen() {
   );
   const alerts = operationalAlerts(requests);
   const busiestHour = busiestHours(requests)[0]?.hour ?? "--";
+  const monthRequests = currentMonthRequests(requests);
+  const monthCounts = statusCounts(monthRequests);
+  const monthRevenue = estimatedRevenue(
+    monthRequests.filter((request) => !["rejected", "cancelled"].includes(request.status))
+  );
+  const realizedRevenue = completedRevenue(monthRequests);
+  const ticket = averageTicket(monthRequests);
+  const completion = completionRate(monthRequests);
+  const cancellation = cancellationRate(monthRequests);
 
   return (
     <Screen>
@@ -85,6 +99,13 @@ export function AdminDashboardScreen() {
           tone="warning"
         />
       ) : null}
+      {alerts.approvedWithoutBudget > 0 ? (
+        <Notice
+          message={`${alerts.approvedWithoutBudget} pedido(s) aprovado(s) ainda precisam de valor definido antes do pagamento.`}
+          title="OrÃ§amento pendente"
+          tone="warning"
+        />
+      ) : null}
       <View style={[styles.metricsRow, isCompact ? styles.metricsColumn : null]}>
         <AdminMetric icon="time-outline" label="Pendentes" value={String(pending)} />
         <AdminMetric icon="calendar-outline" label="Ativos" value={String(activeRequests.length)} />
@@ -102,6 +123,28 @@ export function AdminDashboardScreen() {
         <AdminInsightCard icon="color-wand-outline" label="Produção" tone="sage" value={`${inProgress} ativo(s)`} />
         <AdminInsightCard icon="alarm-outline" label="Horário cheio" tone="ink" value={busiestHour} />
         <AdminInsightCard icon="receipt-outline" label="Sem orçamento" value={`${alerts.withoutBudget} pedido(s)`} />
+      </View>
+      <View style={styles.productivityPanel}>
+        <View style={styles.productivityHeader}>
+          <Text style={styles.sectionTitleCompact}>Produtividade do mês</Text>
+          <Text style={styles.productivitySubtitle}>
+            Visão rápida de conclusão, receita realizada e pontos que pedem atenção.
+          </Text>
+        </View>
+        <View style={[styles.metricsRow, isCompact ? styles.metricsColumn : null]}>
+          <AdminMetric icon="calendar-clear-outline" label="Pedidos no mês" value={String(monthRequests.length)} />
+          <AdminMetric icon="cash-outline" label="Receita do mês" value={formatMoney(monthRevenue)} />
+        </View>
+        <View style={[styles.metricsRow, isCompact ? styles.metricsColumn : null]}>
+          <AdminMetric icon="wallet-outline" label="Receita concluída" value={formatMoney(realizedRevenue)} />
+          <AdminMetric icon="pricetag-outline" label="Ticket médio" value={formatMoney(ticket)} />
+        </View>
+        <View style={styles.insightsRow}>
+          <AdminInsightCard icon="checkmark-done-outline" label="Conclusão" tone="sage" value={`${completion}%`} />
+          <AdminInsightCard icon="close-circle-outline" label="Cancelamento" value={`${cancellation}%`} />
+          <AdminInsightCard icon="hourglass-outline" label="Pendentes no mês" value={`${monthCounts.pending} pedido(s)`} />
+          <AdminInsightCard icon="sparkles-outline" label="Aprovados no mês" tone="ink" value={`${monthCounts.approved} pedido(s)`} />
+        </View>
       </View>
       <Text style={styles.sectionTitle}>Próximos atendimentos</Text>
       <View style={styles.list}>
@@ -180,6 +223,27 @@ const styles = StyleSheet.create({
     color: theme.colors.ink,
     marginBottom: theme.spacing.md,
     marginTop: theme.spacing.lg
+  },
+  productivityPanel: {
+    backgroundColor: theme.colors.ivoryGlass,
+    borderColor: theme.colors.line,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    gap: theme.spacing.md,
+    marginTop: theme.spacing.lg,
+    padding: theme.spacing.md,
+    ...theme.shadows.soft
+  },
+  productivityHeader: {
+    gap: theme.spacing.xxs
+  },
+  sectionTitleCompact: {
+    ...theme.typography.section,
+    color: theme.colors.ink
+  },
+  productivitySubtitle: {
+    ...theme.typography.body,
+    color: theme.colors.taupe
   },
   list: {
     gap: theme.spacing.md
