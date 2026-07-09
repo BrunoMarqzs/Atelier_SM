@@ -16,6 +16,7 @@ export type ClientStackParamList = {
 
 export type AdminStackParamList = {
   AdminDashboard: undefined;
+  AdminAnnouncements: undefined;
   AdminRequests: undefined;
   AdminAgenda: undefined;
   AdminServices: undefined;
