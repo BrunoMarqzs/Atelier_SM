@@ -11,8 +11,10 @@ import {
 import {
   addRemoteRequestComment,
   blockRemoteSlot,
+  createRemoteAnnouncement,
   createRemoteRequest,
   createRemoteService,
+  deactivateRemoteAnnouncement,
   deactivateRemoteService,
   loadAtelierSnapshot,
   type NewAppointmentRequest,
@@ -20,11 +22,13 @@ import {
   rescheduleRemoteRequest,
   updateRemoteRequestEstimate,
   updateRemoteRequestStatus,
+  updateRemoteAnnouncement,
   updateRemoteService
 } from "@/services/atelierRepository";
-import type { AppointmentRequest, AppointmentStatus, Service, TimeSlot } from "@/types/domain";
+import type { AppointmentRequest, AppointmentStatus, Announcement, Service, TimeSlot } from "@/types/domain";
 
 type AtelierState = {
+  announcements: Announcement[];
   blockedSlotIds: string[];
   error?: string;
   loading: boolean;
@@ -32,7 +36,11 @@ type AtelierState = {
   services: Service[];
   addRequest: (request: NewAppointmentRequest) => Promise<AppointmentRequest>;
   addRequestComment: (requestId: number, comment: string) => Promise<void>;
+  createAnnouncement: (
+    announcement: Omit<Announcement, "id" | "createdAt" | "updatedAt">
+  ) => Promise<Announcement>;
   createService: (service: Omit<Service, "id">) => Promise<Service>;
+  deactivateAnnouncement: (announcementId: number) => Promise<void>;
   deactivateService: (serviceId: number) => Promise<void>;
   refresh: () => Promise<void>;
   rescheduleRequest: (requestId: number, slotId: number, comment?: string) => Promise<void>;
@@ -43,6 +51,7 @@ type AtelierState = {
     status: AppointmentStatus,
     options?: { comment?: string; estimatedPrice?: number }
   ) => Promise<void>;
+  updateAnnouncement: (announcement: Announcement) => Promise<void>;
   updateService: (service: Service) => Promise<void>;
 };
 
@@ -50,6 +59,7 @@ const AtelierContext = createContext<AtelierState | undefined>(undefined);
 
 export function AtelierProvider({ children }: PropsWithChildren) {
   const [requests, setRequests] = useState<AppointmentRequest[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [blockedSlotIds, setBlockedSlotIds] = useState<string[]>([]);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +70,7 @@ export function AtelierProvider({ children }: PropsWithChildren) {
     setError(undefined);
     try {
       const snapshot = await loadAtelierSnapshot();
+      setAnnouncements(snapshot.announcements);
       setServices(snapshot.services);
       setRequests(snapshot.requests);
       setBlockedSlotIds(snapshot.blockedSlotIds);
@@ -76,6 +87,7 @@ export function AtelierProvider({ children }: PropsWithChildren) {
 
   const value = useMemo<AtelierState>(
     () => ({
+      announcements,
       requests,
       blockedSlotIds,
       error,
@@ -100,6 +112,13 @@ export function AtelierProvider({ children }: PropsWithChildren) {
         await refresh();
         return created;
       },
+      createAnnouncement: async (announcement) => {
+        setError(undefined);
+        const created = await createRemoteAnnouncement(announcement);
+        setAnnouncements((current) => [created, ...current.filter((item) => item.id !== created.id)]);
+        await refresh();
+        return created;
+      },
       addRequestComment: async (requestId, comment) => {
         setError(undefined);
         const updated = await addRemoteRequestComment(requestId, comment);
@@ -109,6 +128,12 @@ export function AtelierProvider({ children }: PropsWithChildren) {
         setError(undefined);
         await deactivateRemoteService(serviceId);
         setServices((current) => current.filter((service) => service.id !== serviceId));
+        await refresh();
+      },
+      deactivateAnnouncement: async (announcementId) => {
+        setError(undefined);
+        await deactivateRemoteAnnouncement(announcementId);
+        setAnnouncements((current) => current.filter((announcement) => announcement.id !== announcementId));
         await refresh();
       },
       refresh,
@@ -137,13 +162,19 @@ export function AtelierProvider({ children }: PropsWithChildren) {
         await updateRemoteRequestStatus(requestId, status, options);
         await refresh();
       },
+      updateAnnouncement: async (announcement) => {
+        setError(undefined);
+        const updated = await updateRemoteAnnouncement(announcement);
+        setAnnouncements((current) => current.map((item) => (item.id === announcement.id ? updated : item)));
+        await refresh();
+      },
       updateService: async (service) => {
         setError(undefined);
         const updated = await updateRemoteService(service);
         setServices((current) => current.map((item) => (item.id === service.id ? updated : item)));
       }
     }),
-    [blockedSlotIds, error, loading, refresh, requests, services]
+    [announcements, blockedSlotIds, error, loading, refresh, requests, services]
   );
 
   return <AtelierContext.Provider value={value}>{children}</AtelierContext.Provider>;

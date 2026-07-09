@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config.database import AsyncSessionLocal
 from app.config.settings import get_settings
 from app.models.admin_user import AdminUser
+from app.models.announcement import Announcement
 from app.models.availability_slot import AvailabilitySlot
 from app.models.enums import AvailabilityStatus, PriceType
 from app.models.service import Service
@@ -55,6 +56,22 @@ INITIAL_SERVICES = [
     },
 ]
 
+INITIAL_ANNOUNCEMENTS = [
+    {
+        "title": "Agenda aberta para peças especiais",
+        "body": (
+            "Antecipe ajustes de vestidos de festa, madrinhas e formaturas para garantir "
+            "um acabamento tranquilo e sob medida."
+        ),
+        "kind": "schedule",
+        "cta_label": "Agendar atendimento",
+        "cta_action": "create_order",
+        "cta_url": None,
+        "priority": 20,
+        "is_active": True,
+    }
+]
+
 
 async def seed_admin(session: AsyncSession) -> None:
     print("Seed: verificando administrador inicial...")
@@ -91,6 +108,29 @@ async def seed_services(session: AsyncSession) -> None:
             continue
         session.add(Service(is_active=True, **service_data))
     print("Seed: serviços iniciais sincronizados.")
+
+
+async def seed_announcements(session: AsyncSession) -> None:
+    print("Seed: sincronizando vitrine inicial...")
+    existing_result = await session.execute(
+        select(Announcement).where(
+            Announcement.title.in_(
+                [announcement["title"] for announcement in INITIAL_ANNOUNCEMENTS]
+            )
+        )
+    )
+    existing_by_title = {
+        announcement.title: announcement for announcement in existing_result.scalars()
+    }
+
+    for announcement_data in INITIAL_ANNOUNCEMENTS:
+        existing = existing_by_title.get(str(announcement_data["title"]))
+        if existing:
+            for field, value in announcement_data.items():
+                setattr(existing, field, value)
+            continue
+        session.add(Announcement(**announcement_data))
+    print("Seed: vitrine inicial sincronizada.")
 
 
 async def seed_availability(session: AsyncSession, months_ahead: int = 6) -> None:
@@ -135,6 +175,8 @@ async def run_seed() -> None:
         await seed_admin(session)
         await session.commit()
         await seed_services(session)
+        await session.commit()
+        await seed_announcements(session)
         await session.commit()
         await seed_availability(session)
         await session.commit()

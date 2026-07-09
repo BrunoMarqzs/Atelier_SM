@@ -9,6 +9,10 @@ backend/.venv/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 *.egg-info/
 backend/*.egg-info/
 
@@ -31,4 +35,5 @@ frontend/.env
 *.log
 uploads/
 backend/uploads/
+backend/storage/
 backend/storage/uploads/

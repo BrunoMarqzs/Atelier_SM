@@ -1,9 +1,13 @@
 import {
   addAdminRequestComment,
   blockAdminSlot,
+  createAdminAnnouncement,
   createAdminService,
+  deactivateAdminAnnouncement,
   deactivateAdminService,
+  fetchAdminAnnouncements,
   fetchAdminRequests,
+  fetchAnnouncements,
   fetchAvailability,
   fetchServices,
   hasAdminSession,
@@ -12,10 +16,11 @@ import {
   submitAppointmentRequest,
   updateAdminRequestEstimate,
   updateAdminRequestStatus,
+  updateAdminAnnouncement,
   updateAdminService,
   uploadRequestImage
 } from "@/services/api";
-import type { AppointmentRequest, AppointmentStatus, Service, TimeSlot } from "@/types/domain";
+import type { AppointmentRequest, AppointmentStatus, Announcement, Service, TimeSlot } from "@/types/domain";
 import { toLocalDateTimeInput } from "@/utils/calendar";
 
 export type NewAppointmentRequest = Omit<AppointmentRequest, "id" | "status"> & {
@@ -44,12 +49,28 @@ export async function loadAtelierSnapshot() {
     hasAdminSession() ? fetchAdminRequests() : Promise.resolve([]),
     fetchAvailability(range.startsAt, range.endsAt)
   ]);
+  const announcements = hasAdminSession() ? await fetchAdminAnnouncements() : await fetchAnnouncements();
 
   return {
+    announcements,
     services,
     requests,
     blockedSlotIds: slots.filter((slot) => slot.status === "blocked").map((slot) => slot.slotKey)
   };
+}
+
+export async function createRemoteAnnouncement(
+  announcement: Omit<Announcement, "id" | "createdAt" | "updatedAt">
+) {
+  return createAdminAnnouncement(announcement);
+}
+
+export async function updateRemoteAnnouncement(announcement: Announcement) {
+  return updateAdminAnnouncement(announcement);
+}
+
+export async function deactivateRemoteAnnouncement(announcementId: number) {
+  await deactivateAdminAnnouncement(announcementId);
 }
 
 export async function createRemoteRequest(request: NewAppointmentRequest) {

@@ -1,4 +1,5 @@
 from app.models.admin_user import AdminUser
+from app.models.announcement import Announcement
 from app.models.appointment_request import AppointmentRequest
 from app.models.audit_log import AuditLog
 from app.models.availability_slot import AvailabilitySlot
@@ -21,6 +22,7 @@ __all__ = [
     "AppointmentRequest",
     "AppointmentStatus",
     "AdminUser",
+    "Announcement",
     "AuditLog",
     "AvailabilitySlot",
     "AvailabilityStatus",
