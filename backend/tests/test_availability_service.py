@@ -305,6 +305,44 @@ async def test_ensure_business_slots_materializes_missing_hours() -> None:
     assert all(slot.status == AvailabilityStatus.AVAILABLE for slot in created_slots)
 
 
+@pytest.mark.anyio
+async def test_list_available_materializes_missing_half_hour_slots() -> None:
+    created_slots = []
+
+    class FakeSession:
+        async def flush(self):
+            return None
+
+    class FakeRepository:
+        session = FakeSession()
+
+        async def find_exact_window(self, _starts_at, _ends_at):
+            return None
+
+        async def add(self, slot):
+            created_slots.append(slot)
+            return slot
+
+        async def list_between(self, _starts_at, _ends_at):
+            return created_slots
+
+    service = AvailabilityService(session=None)  # type: ignore[arg-type]
+    service.repository = FakeRepository()
+
+    slots = await service.list_available(
+        datetime(2026, 6, 2, 8, 0),
+        datetime(2026, 6, 2, 10, 0),
+    )
+
+    assert [slot.starts_at.strftime("%H:%M") for slot in slots] == [
+        "08:00",
+        "08:30",
+        "09:00",
+        "09:30",
+    ]
+    assert all(slot.ends_at - slot.starts_at == timedelta(minutes=30) for slot in slots)
+
+
 @pytest.fixture
 def availability_slot_factory():
     from app.models.availability_slot import AvailabilitySlot
