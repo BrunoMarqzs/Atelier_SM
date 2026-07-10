@@ -81,7 +81,7 @@ export function ScheduleScreen({ navigation }: Props) {
       })
       .catch(() => {
         setRemoteSlots([]);
-        setAgendaError("Não foi possível carregar a agenda pelo backend. Tente novamente em instantes.");
+        setAgendaError("Não foi possível conectar à agenda agora. Tente novamente em alguns instantes.");
       })
       .finally(() => {
         setLoadingSlots(false);
@@ -133,14 +133,14 @@ export function ScheduleScreen({ navigation }: Props) {
       {agendaError ? <Notice message={agendaError} title="Agenda indisponível" tone="danger" /> : null}
       {loadingSlots ? (
         <LoadingState
-          message="Estamos consultando a disponibilidade atualizada do atelier."
+          message="Estamos consultando a disponibilidade atualizada do atelier. No primeiro acesso, isso pode levar alguns segundos."
           title="Buscando horários"
         />
       ) : null}
       {!loadingSlots && slots.length === 0 ? (
         <EmptyState
           icon="calendar-clear-outline"
-          message="Escolha outra data ou tente novamente em alguns instantes."
+          message="Não encontramos horários para este dia. Escolha outra data ou atualize a agenda."
           title="Nenhum horário disponível"
         >
           <PremiumButton
@@ -167,7 +167,7 @@ export function ScheduleScreen({ navigation }: Props) {
       <PremiumButton
         disabled={!booking.slot?.available || loadingSlots}
         icon="create-outline"
-        label="Detalhar solicitação"
+        label="Continuar solicitação"
         onPress={continueFlow}
         style={styles.action}
       />

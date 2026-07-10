@@ -19,6 +19,7 @@ import {
 } from "@/services/api";
 import { theme } from "@/theme";
 import type { ScheduleConfig, ScheduleException } from "@/types/domain";
+import { friendlyErrorMessage } from "@/utils/errors";
 
 const weekdayLabels: Record<string, string> = {
   "0": "Segunda",
@@ -84,7 +85,7 @@ export function AdminScheduleScreen() {
       setConfig(loadedConfig);
       setExceptions(loadedExceptions);
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar a agenda.");
+      setError(friendlyErrorMessage(caughtError, "Não foi possível carregar as regras da agenda."));
     } finally {
       setLoading(false);
     }
@@ -108,7 +109,7 @@ export function AdminScheduleScreen() {
       setKind("closed");
       setSuccess("Exceção de agenda salva com sucesso.");
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível salvar a exceção.");
+      setError(friendlyErrorMessage(caughtError, "Não foi possível salvar a exceção."));
     } finally {
       setSaving(false);
     }
@@ -135,7 +136,13 @@ export function AdminScheduleScreen() {
         title="Regras da agenda"
       />
 
-      {loading ? <LoadingState compact message="Carregando política de horários." title="Sincronizando regras" /> : null}
+      {loading ? (
+        <LoadingState
+          compact
+          message="Carregando política de horários, feriados e exceções."
+          title="Sincronizando regras"
+        />
+      ) : null}
       {error ? <Notice message={error} title="Agenda não sincronizada" tone="danger" /> : null}
       {success ? <Notice message={success} title="Agenda atualizada" tone="success" /> : null}
 
@@ -232,7 +239,7 @@ export function AdminScheduleScreen() {
         ) : (
           <EmptyState
             icon="calendar-clear-outline"
-            message="Feriados, férias e datas especiais aparecerão aqui."
+            message="Feriados, férias e datas especiais aparecerão aqui quando forem cadastrados."
             title="Nenhuma exceção"
           />
         )}
