@@ -18,6 +18,7 @@ import { fetchPublicRequest } from "@/services/api";
 import { theme } from "@/theme";
 import type { AppointmentRequest } from "@/types/domain";
 import type { PublicStackParamList } from "@/types/navigation";
+import { friendlyErrorMessage } from "@/utils/errors";
 import { formatMoney } from "@/utils/format";
 
 type Props = NativeStackScreenProps<PublicStackParamList, "PublicRequest">;
@@ -34,7 +35,7 @@ export function PublicRequestScreen({ navigation, route }: Props) {
       setRequest(await fetchPublicRequest(route.params.code));
     } catch (caughtError) {
       setRequest(undefined);
-      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar este pedido.");
+      setError(friendlyErrorMessage(caughtError, "Não foi possível carregar este pedido."));
     } finally {
       setLoading(false);
     }
@@ -52,7 +53,12 @@ export function PublicRequestScreen({ navigation, route }: Props) {
         title="Acompanhamento"
       />
 
-      {loading ? <LoadingState message="Buscando os detalhes do pedido." title="Carregando pedido" /> : null}
+      {loading ? (
+        <LoadingState
+          message="Buscando status, orçamento, comentários e histórico do atelier."
+          title="Carregando pedido"
+        />
+      ) : null}
       {error ? <Notice message={error} title="Pedido indisponível" tone="danger" /> : null}
 
       {request ? (
@@ -99,7 +105,7 @@ export function PublicRequestScreen({ navigation, route }: Props) {
             ) : (
               <EmptyState
                 icon="image-outline"
-                message="Este pedido não possui imagem anexada."
+                message="Este pedido ainda não possui imagem anexada."
                 title="Sem imagem"
               />
             )}

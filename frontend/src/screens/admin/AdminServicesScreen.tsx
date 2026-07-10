@@ -35,7 +35,7 @@ export function AdminServicesScreen() {
       await updateService(editingService);
       setEditingService(undefined);
     } catch {
-      setServiceError("Não foi possível salvar o serviço no backend.");
+      setServiceError("Não foi possível salvar o serviço agora. Confira a conexão e tente novamente.");
     } finally {
       setSaving(false);
     }
@@ -55,7 +55,7 @@ export function AdminServicesScreen() {
       });
       setEditingService(created);
     } catch {
-      setServiceError("Não foi possível criar o serviço no backend.");
+      setServiceError("Não foi possível criar o serviço agora. Confira a conexão e tente novamente.");
     } finally {
       setSaving(false);
     }

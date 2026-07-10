@@ -50,7 +50,7 @@ router = APIRouter(
 
 @router.get("/dashboard")
 async def dashboard(session: AsyncSession = Depends(get_session)) -> dict[str, int]:
-    requests = await AppointmentRequestService(session).list()
+    requests = await AppointmentRequestService(session).list_requests()
     return {
         "total_requests": len(requests),
         "pending_requests": len(
@@ -112,7 +112,7 @@ async def list_requests(
     phone: str | None = Query(default=None, max_length=32),
     session: AsyncSession = Depends(get_session),
 ) -> list[AppointmentRequestRead]:
-    return await AppointmentRequestService(session).list(status, client_name, phone)
+    return await AppointmentRequestService(session).list_requests(status, client_name, phone)
 
 
 @router.get("/requests/{request_id}", response_model=AppointmentRequestRead)

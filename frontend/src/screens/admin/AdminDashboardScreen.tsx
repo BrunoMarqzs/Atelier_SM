@@ -73,7 +73,7 @@ export function AdminDashboardScreen() {
       {loading ? (
         <LoadingState
           compact
-          message="Buscando pedidos, serviços e disponibilidade em tempo real."
+          message="Buscando pedidos, serviços e disponibilidade. No primeiro acesso, isso pode levar alguns segundos."
           title="Atualizando painel"
         />
       ) : null}
@@ -110,7 +110,7 @@ export function AdminDashboardScreen() {
         ) : (
           <EmptyState
             icon="calendar-outline"
-            message="Quando houver pedidos aprovados ou em andamento, eles aparecem aqui por ordem de data."
+            message="Quando houver pedidos aprovados ou em andamento, eles aparecerão aqui por ordem de data."
             title="Agenda tranquila"
           />
         )}
