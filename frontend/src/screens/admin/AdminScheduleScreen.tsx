@@ -34,15 +34,40 @@ const weekdayLabels: Record<string, string> = {
 function parseHours(value: string) {
   return value
     .split(",")
-    .map((item) => Number(item.trim().replace(":00", "")))
-    .filter((item) => Number.isInteger(item) && item >= 0 && item <= 23);
+    .map(parseScheduleMinute)
+    .filter((item): item is number => item !== undefined);
 }
 
 function formatHours(hours?: number[]) {
   if (!hours?.length) {
     return "Sem horários";
   }
-  return hours.map((hour) => `${String(hour).padStart(2, "0")}:00`).join(", ");
+  return hours.map(formatScheduleMinute).join(", ");
+}
+
+function parseScheduleMinute(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+  const match = trimmed.match(/^(\d{1,2})(?::(\d{2}))?$/);
+  if (!match) {
+    return undefined;
+  }
+  const hour = Number(match[1]);
+  const minute = Number(match[2] ?? "0");
+  const total = hour * 60 + minute;
+  if (hour < 0 || hour > 23 || ![0, 30].includes(minute) || total > 1439) {
+    return undefined;
+  }
+  return total;
+}
+
+function formatScheduleMinute(value: number) {
+  const normalized = value <= 23 ? value * 60 : value;
+  const hour = Math.floor(normalized / 60);
+  const minute = normalized % 60;
+  return `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
 }
 
 function HourChips({ hours }: { hours?: number[] }) {
@@ -54,7 +79,7 @@ function HourChips({ hours }: { hours?: number[] }) {
     <View style={styles.hourList}>
       {hours.map((hour) => (
         <View key={hour} style={styles.hourPill}>
-          <Text style={styles.hourPillText}>{String(hour).padStart(2, "0")}:00</Text>
+          <Text style={styles.hourPillText}>{formatScheduleMinute(hour)}</Text>
         </View>
       ))}
     </View>
@@ -193,7 +218,7 @@ export function AdminScheduleScreen() {
           <ElegantInput
             label="Horários"
             onChangeText={setHours}
-            placeholder="08, 09, 10, 14"
+            placeholder="08:00, 08:30, 09:00, 14:30"
             value={hours}
           />
         ) : null}
