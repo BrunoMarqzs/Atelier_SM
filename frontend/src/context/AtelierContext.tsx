@@ -64,7 +64,7 @@ export function AtelierProvider({ children }: PropsWithChildren) {
       setRequests(snapshot.requests);
       setBlockedSlotIds(snapshot.blockedSlotIds);
     } catch {
-      setError("Não foi possível sincronizar com o backend. Verifique se a API está rodando.");
+      setError("Não foi possível conectar ao sistema agora. Tente novamente em alguns instantes.");
     } finally {
       setLoading(false);
     }
@@ -89,7 +89,7 @@ export function AtelierProvider({ children }: PropsWithChildren) {
           await refresh();
           return created;
         } catch (caughtError) {
-          setError("Não foi possível confirmar a solicitação no backend.");
+          setError("Não foi possível confirmar a solicitação agora. Confira a conexão e tente novamente.");
           throw caughtError;
         }
       },

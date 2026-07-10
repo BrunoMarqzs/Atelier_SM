@@ -12,6 +12,7 @@ import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { fetchAdminNotifications, markAdminNotificationRead } from "@/services/api";
 import { theme } from "@/theme";
 import type { NotificationItem } from "@/types/domain";
+import { friendlyErrorMessage } from "@/utils/errors";
 
 export function AdminNotificationsScreen() {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -24,7 +25,7 @@ export function AdminNotificationsScreen() {
     try {
       setNotifications(await fetchAdminNotifications({ limit: 100 }));
     } catch (caughtError) {
-      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar notificações.");
+      setError(friendlyErrorMessage(caughtError, "Não foi possível carregar notificações."));
     } finally {
       setLoading(false);
     }
@@ -48,7 +49,7 @@ export function AdminNotificationsScreen() {
         title="Notificações"
       />
       <PremiumButton icon="refresh-outline" label="Atualizar notificações" onPress={() => void loadNotifications()} variant="secondary" />
-      {loading ? <LoadingState compact message="Buscando eventos do atelier." title="Carregando avisos" /> : null}
+      {loading ? <LoadingState compact message="Buscando eventos recentes do atelier." title="Carregando avisos" /> : null}
       {error ? <Notice message={error} title="Notificações indisponíveis" tone="danger" /> : null}
       <View style={styles.list}>
         {notifications.length > 0 ? (
@@ -84,7 +85,7 @@ export function AdminNotificationsScreen() {
         ) : (
           <EmptyState
             icon="notifications-outline"
-            message="Pedidos, orçamentos, aprovações e remarcações aparecerão aqui."
+            message="Pedidos, orçamentos, aprovações e remarcações aparecerão aqui quando houver novidades."
             title="Nenhuma notificação"
           />
         )}

@@ -12,6 +12,7 @@ import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { fetchAdminAuditLogs } from "@/services/api";
 import { theme } from "@/theme";
 import type { AuditLog } from "@/types/domain";
+import { friendlyErrorMessage } from "@/utils/errors";
 
 const actionLabels: Record<string, string> = {
   created: "Pedido criado",
@@ -33,7 +34,7 @@ export function AdminAuditScreen() {
       setLogs(await fetchAdminAuditLogs({ limit: 120 }));
     } catch (caughtError) {
       setLogs([]);
-      setError(caughtError instanceof Error ? caughtError.message : "Não foi possível carregar a auditoria.");
+      setError(friendlyErrorMessage(caughtError, "Não foi possível carregar a auditoria."));
     } finally {
       setLoading(false);
     }
@@ -47,7 +48,7 @@ export function AdminAuditScreen() {
     <Screen>
       <ScreenHeader subtitle="Registro técnico das alterações críticas do sistema." title="Auditoria" />
       <PremiumButton icon="refresh-outline" label="Atualizar histórico" onPress={() => void loadAudit()} variant="secondary" />
-      {loading ? <LoadingState compact message="Lendo alterações recentes." title="Carregando auditoria" /> : null}
+      {loading ? <LoadingState compact message="Lendo alterações recentes do atelier." title="Carregando auditoria" /> : null}
       {error ? <Notice message={error} title="Auditoria indisponível" tone="danger" /> : null}
 
       <View style={styles.list}>
@@ -56,7 +57,7 @@ export function AdminAuditScreen() {
         ) : (
           <EmptyState
             icon="shield-checkmark-outline"
-            message="As próximas ações administrativas aparecerão aqui com antes e depois."
+            message="As próximas ações administrativas aparecerão aqui com data, responsável e alterações realizadas."
             title="Sem registros de auditoria"
           />
         )}
