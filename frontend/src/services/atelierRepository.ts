@@ -4,7 +4,6 @@ import {
   createAdminService,
   deactivateAdminService,
   fetchAdminRequests,
-  fetchAvailability,
   fetchServices,
   hasAdminSession,
   releaseAdminSlot,
@@ -16,39 +15,22 @@ import {
   uploadRequestImage
 } from "@/services/api";
 import type { AppointmentRequest, AppointmentStatus, Service, TimeSlot } from "@/types/domain";
-import { toLocalDateTimeInput } from "@/utils/calendar";
 
 export type NewAppointmentRequest = Omit<AppointmentRequest, "id" | "status"> & {
   serviceId?: number;
   slotId?: number;
 };
 
-function availabilityRange() {
-  const startsAt = new Date();
-  startsAt.setHours(0, 0, 0, 0);
-
-  const endsAt = new Date(startsAt);
-  endsAt.setMonth(endsAt.getMonth() + 6);
-  endsAt.setHours(23, 59, 59, 999);
-
-  return {
-    startsAt: toLocalDateTimeInput(startsAt),
-    endsAt: toLocalDateTimeInput(endsAt)
-  };
-}
-
 export async function loadAtelierSnapshot() {
-  const range = availabilityRange();
-  const [services, requests, slots] = await Promise.all([
+  const [services, requests] = await Promise.all([
     fetchServices(),
-    hasAdminSession() ? fetchAdminRequests() : Promise.resolve([]),
-    fetchAvailability(range.startsAt, range.endsAt)
+    hasAdminSession() ? fetchAdminRequests() : Promise.resolve([])
   ]);
 
   return {
     services,
     requests,
-    blockedSlotIds: slots.filter((slot) => slot.status === "blocked").map((slot) => slot.slotKey)
+    blockedSlotIds: []
   };
 }
 
