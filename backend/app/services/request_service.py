@@ -114,14 +114,14 @@ class AppointmentRequestService:
         await self.get_required(request_id)
         return await self.status_observer.repository.list_by_request(request_id)
 
-    async def list(
+    async def list_requests(
         self,
         status: AppointmentStatus | None = None,
         client_name: str | None = None,
         phone: str | None = None,
     ) -> list[AppointmentRequest]:
         normalized_phone = "".join(filter(str.isdigit, phone or "")) or None
-        return await self.repository.list(status, client_name, normalized_phone)
+        return await self.repository.list_requests(status, client_name, normalized_phone)
 
     async def list_public_history_by_phone(self, phone: str) -> list[AppointmentRequest]:
         normalized_phone = normalize_phone(phone)
