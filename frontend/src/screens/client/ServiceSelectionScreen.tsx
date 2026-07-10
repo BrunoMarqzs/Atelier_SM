@@ -40,7 +40,7 @@ export function ServiceSelectionScreen({ navigation }: Props) {
         ) : (
           <EmptyState
             icon="sparkles-outline"
-            message="O catálogo será exibido assim que os serviços estiverem sincronizados."
+            message="Não foi possível exibir os serviços agora. Tente novamente em alguns instantes."
             title="Serviços indisponíveis"
           />
         )}

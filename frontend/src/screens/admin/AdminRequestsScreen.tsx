@@ -21,6 +21,7 @@ import { useAtelier } from "@/context/AtelierContext";
 import { theme } from "@/theme";
 import type { AppointmentRequest, AppointmentStatus } from "@/types/domain";
 import { sortRequestsBySchedule } from "@/utils/calendar";
+import { friendlyErrorMessage } from "@/utils/errors";
 
 const statusFilters: Array<{ label: string; value?: AppointmentStatus }> = [
   { label: "Todos" },
@@ -46,8 +47,18 @@ function canTransition(current: AppointmentStatus, target: AppointmentStatus) {
   return current !== target && allowedStatusTransitions[current].includes(target);
 }
 
-function errorMessage(caughtError: unknown, fallback: string) {
-  return caughtError instanceof Error && caughtError.message ? caughtError.message : fallback;
+function actionLabel(status: AppointmentStatus) {
+  const labels: Record<AppointmentStatus, string> = {
+    pending: "marcar como pendente",
+    under_review: "marcar em avaliação",
+    quote_sent: "enviar orçamento",
+    approved: "aprovar",
+    in_progress: "marcar em andamento",
+    completed: "concluir",
+    cancelled: "cancelar",
+    rejected: "recusar"
+  };
+  return labels[status];
 }
 
 export function AdminRequestsScreen() {
@@ -147,6 +158,19 @@ export function AdminRequestsScreen() {
     ]);
   }
 
+  function confirmRequestStatus(status: AppointmentStatus, onConfirm: () => Promise<void>) {
+    if (!freshSelectedRequest) {
+      return;
+    }
+    const label = [
+      `Deseja ${actionLabel(status)} o pedido de ${freshSelectedRequest.clientName}?`,
+      "",
+      `Serviço: ${freshSelectedRequest.serviceName}`,
+      `Horário: ${freshSelectedRequest.slotLabel}`
+    ].join("\n");
+    confirmAction(label, onConfirm);
+  }
+
   async function runAction(action: () => Promise<void>, failureMessage: string, successMessage?: string) {
     setActionLoading(true);
     setActionError(undefined);
@@ -157,7 +181,7 @@ export function AdminRequestsScreen() {
         setActionSuccess(successMessage);
       }
     } catch (caughtError) {
-      setActionError(errorMessage(caughtError, failureMessage));
+      setActionError(friendlyErrorMessage(caughtError, failureMessage));
     } finally {
       setActionLoading(false);
     }
@@ -196,7 +220,7 @@ export function AdminRequestsScreen() {
           setSelectedRequest(undefined);
         }
       },
-      "Não foi possível atualizar o pedido.",
+      "Não foi possível atualizar o pedido agora. Confira a conexão e tente novamente.",
       status === "completed" ? "Pedido concluído e removido da fila ativa." : "Status atualizado com sucesso."
     );
   }
@@ -359,7 +383,7 @@ export function AdminRequestsScreen() {
         ) : (
           <EmptyState
             icon="file-tray-outline"
-            message="Ajuste os filtros ou aguarde novas solicitações chegarem pelo fluxo da cliente."
+            message="Ajuste os filtros, limpe a busca ou aguarde novas solicitações chegarem pelo fluxo da cliente."
             title="Nenhum pedido encontrado"
           />
         )}
@@ -463,7 +487,7 @@ export function AdminRequestsScreen() {
               icon="search-outline"
               label="Marcar em avaliação"
               onPress={() =>
-                confirmAction("Marcar este pedido como em avaliação?", () =>
+                confirmRequestStatus("under_review", () =>
                   changeStatus(freshSelectedRequest.id, "under_review", {
                     comment: comment.trim() || undefined,
                     estimatedPrice: estimate ? Number(estimate.replace(",", ".")) : undefined
@@ -479,7 +503,7 @@ export function AdminRequestsScreen() {
               icon="close-circle-outline"
               label="Recusar"
               onPress={() =>
-                confirmAction("Recusar esta solicitação?", () =>
+                confirmRequestStatus("rejected", () =>
                   changeStatus(freshSelectedRequest.id, "rejected", {
                     comment: comment.trim() || "Solicitação recusada pelo administrativo."
                   })
@@ -494,7 +518,7 @@ export function AdminRequestsScreen() {
               icon="checkmark-circle-outline"
               label="Aprovar"
               onPress={() =>
-                confirmAction("Aprovar esta solicitação?", () =>
+                confirmRequestStatus("approved", () =>
                   changeStatus(freshSelectedRequest.id, "approved", {
                     comment: comment.trim() || "Solicitação aprovada pelo administrativo.",
                     estimatedPrice: estimate ? Number(estimate.replace(",", ".")) : undefined
@@ -509,7 +533,7 @@ export function AdminRequestsScreen() {
                 icon="receipt-outline"
                 label="Enviar orçamento"
                 onPress={() =>
-                  confirmAction("Enviar este orçamento para a cliente?", () =>
+                  confirmRequestStatus("quote_sent", () =>
                     changeStatus(freshSelectedRequest.id, "quote_sent", {
                       comment: comment.trim() || "Orçamento enviado pelo atelier.",
                       estimatedPrice: estimate ? Number(estimate.replace(",", ".")) : undefined
@@ -525,7 +549,7 @@ export function AdminRequestsScreen() {
                 icon="flag-outline"
                 label="Concluir pedido"
                 onPress={() =>
-                  confirmAction("Concluir este pedido?", () =>
+                  confirmRequestStatus("completed", () =>
                     changeStatus(freshSelectedRequest.id, "completed", {
                       comment: "Pedido concluído pelo administrativo."
                     })

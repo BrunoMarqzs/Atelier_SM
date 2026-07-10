@@ -58,7 +58,7 @@ export function ClientIdentityScreen({ navigation }: Props) {
     } catch {
       setHistory([]);
       setHistoryLoaded(true);
-      setHistoryError("Não foi possível carregar seu histórico agora. Confira a conexão e tente novamente.");
+      setHistoryError("Não foi possível conectar ao histórico agora. Tente novamente em alguns instantes.");
     } finally {
       setHistoryLoading(false);
     }
@@ -118,7 +118,7 @@ export function ClientIdentityScreen({ navigation }: Props) {
 
       {historyLoading ? (
         <LoadingState
-          message="Buscando solicitações vinculadas a este telefone."
+          message="Buscando pedidos vinculados a este telefone. No primeiro acesso, isso pode levar alguns segundos."
           title="Consultando pedidos"
         />
       ) : null}
@@ -130,7 +130,7 @@ export function ClientIdentityScreen({ navigation }: Props) {
           {history.length > 0 ? (
             <>
               <Notice
-                message="Encontramos pedidos vinculados a este telefone. Você pode acompanhar status, avaliação e fotos enviadas."
+                message="Encontramos pedidos vinculados a este telefone. Você pode acompanhar status, orçamento, comentários e fotos enviadas."
                 title="Histórico localizado"
                 tone="success"
               />
@@ -150,7 +150,7 @@ export function ClientIdentityScreen({ navigation }: Props) {
           ) : (
             <EmptyState
               icon="file-tray-outline"
-              message="Não encontramos pedidos para este telefone. Você pode iniciar uma nova solicitação agora."
+              message="Não encontramos pedidos para este telefone. Você pode criar uma nova solicitação usando o botão acima."
               title="Nenhum pedido encontrado"
             />
           )}

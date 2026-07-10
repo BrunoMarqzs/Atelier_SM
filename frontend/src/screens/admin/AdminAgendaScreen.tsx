@@ -145,7 +145,7 @@ export function AdminAgendaScreen() {
       setRemoteSlots(loadedSlots);
     } catch {
       setRemoteSlots([]);
-      setAgendaError("Não foi possível carregar a agenda pelo backend.");
+      setAgendaError("Não foi possível conectar à agenda agora. Tente novamente em alguns instantes.");
     } finally {
       setLoadingSlots(false);
     }
@@ -166,7 +166,7 @@ export function AdminAgendaScreen() {
       setSelectedSlot(undefined);
       await loadSlots();
     } catch {
-      setAgendaError("Não foi possível alterar o bloqueio do horário.");
+      setAgendaError("Não foi possível salvar esta alteração agora. Confira a conexão e tente novamente.");
     } finally {
       setBlocking(false);
     }
@@ -274,14 +274,18 @@ export function AdminAgendaScreen() {
             <Text style={styles.summaryLabel}>Bloqueados</Text>
           </View>
         </View>
-        {agendaError ? <Notice message={agendaError} title="Agenda não sincronizada" tone="danger" /> : null}
+        {agendaError ? <Notice message={agendaError} title="Agenda indisponível" tone="danger" /> : null}
         {loadingSlots ? (
-          <LoadingState compact message="Atualizando horários, bloqueios e reservas." title="Sincronizando agenda" />
+          <LoadingState
+            compact
+            message="Atualizando horários, bloqueios e reservas. No primeiro acesso, isso pode levar alguns segundos."
+            title="Sincronizando agenda"
+          />
         ) : null}
         {!loadingSlots && slots.length === 0 ? (
           <EmptyState
             icon="calendar-clear-outline"
-            message="Tente outra data ou atualize a agenda para buscar a disponibilidade novamente."
+            message="Não há horários para este recorte. Tente outra data, mude a visão ou atualize a agenda."
             title="Nenhum horário disponível"
           >
             <PremiumButton
@@ -344,7 +348,7 @@ export function AdminAgendaScreen() {
             ) : (
               <Text style={styles.emptyText}>
                 {selectedSlot.status === "blocked"
-                  ? "Este horário está bloqueado para atendimento."
+                  ? "Este horário está bloqueado para atendimento. Você pode liberá-lo se a agenda mudar."
                   : "Nenhum pedido marcado neste horário."}
               </Text>
             )}

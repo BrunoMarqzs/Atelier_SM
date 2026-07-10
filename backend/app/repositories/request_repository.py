@@ -38,7 +38,7 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
         )
         return result.scalar_one_or_none()
 
-    async def list(
+    async def list_requests(
         self,
         status: AppointmentStatus | None = None,
         client_name: str | None = None,
@@ -64,7 +64,10 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
         )
         return list(result.scalars().all())
 
-    async def list_by_client_phone(self, normalized_phone: str) -> list[AppointmentRequest]:
+    async def list_by_client_phone(
+        self,
+        normalized_phone: str,
+    ) -> list[AppointmentRequest]:
         result = await self.session.execute(
             select(AppointmentRequest)
             .join(AppointmentRequest.client)
