@@ -11,11 +11,13 @@ from app.utils.errors import ConflictError, NotFoundError
 from app.utils.schedule_rules import (
     allowed_hours_for_date,
     is_allowed_slot_start,
+    minute_of_day,
+    slot_time_from_minutes,
     to_atelier_datetime,
 )
 from app.validators.availability import AvailabilitySlotCreate, BlockSlotInput, ReleaseSlotInput
 
-SLOT_MINUTES = 60
+SLOT_MINUTES = 30
 
 
 class AvailabilityService:
@@ -27,16 +29,25 @@ class AvailabilityService:
         self, starts_at: datetime, ends_at: datetime
     ) -> list[AvailabilitySlot]:
         slots = await self.repository.list_between(starts_at, ends_at)
-        return [slot for slot in slots if is_allowed_slot_start(slot.starts_at)]
+        return [
+            slot
+            for slot in slots
+            if is_allowed_slot_start(slot.starts_at)
+            and (
+                slot.ends_at - slot.starts_at == timedelta(minutes=SLOT_MINUTES)
+                or slot.status == AvailabilityStatus.BOOKED
+            )
+        ]
 
     async def ensure_business_slots(self, starts_at: datetime, ends_at: datetime) -> None:
         cursor = datetime.combine(starts_at.date(), time(hour=0), tzinfo=starts_at.tzinfo)
         end_day = ends_at.date()
 
         while cursor.date() <= end_day:
-            for hour in await self.schedule_policy.allowed_hours_for_date(cursor):
+            for slot_minute in await self.schedule_policy.allowed_hours_for_date(cursor):
+                hour, minute = slot_time_from_minutes(slot_minute)
                 slot_start = datetime.combine(
-                    cursor.date(), time(hour=hour), tzinfo=starts_at.tzinfo
+                    cursor.date(), time(hour=hour, minute=minute), tzinfo=starts_at.tzinfo
                 )
                 slot_end = slot_start + timedelta(minutes=SLOT_MINUTES)
                 if slot_start < starts_at or slot_end > ends_at:
@@ -140,9 +151,8 @@ class AvailabilityService:
 
     async def is_allowed_slot_start(self, starts_at: datetime) -> bool:
         atelier_starts_at = to_atelier_datetime(starts_at)
-        return atelier_starts_at.hour in await self.schedule_policy.allowed_hours_for_date(
-            starts_at
-        )
+        allowed_minutes = await self.schedule_policy.allowed_hours_for_date(starts_at)
+        return minute_of_day(atelier_starts_at) in allowed_minutes
 
     def _validate_window_shape(self, starts_at: datetime, ends_at: datetime) -> None:
         if ends_at <= starts_at:
@@ -150,10 +160,10 @@ class AvailabilityService:
 
         duration = ends_at - starts_at
         if duration != timedelta(minutes=SLOT_MINUTES):
-            raise ConflictError("A agenda trabalha com intervalos de 1 hora.")
+            raise ConflictError("A agenda trabalha com intervalos de 30 minutos.")
 
-        if starts_at.minute != 0 or starts_at.second != 0 or starts_at.microsecond != 0:
-            raise ConflictError("Horário deve começar em hora cheia.")
+        if starts_at.minute not in {0, 30} or starts_at.second != 0 or starts_at.microsecond != 0:
+            raise ConflictError("Horário deve começar em minuto 00 ou 30.")
 
         if starts_at.date() != ends_at.date():
             raise ConflictError("Horário não pode atravessar dias.")
