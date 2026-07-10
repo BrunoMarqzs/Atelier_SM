@@ -5,19 +5,79 @@ from pydantic import BaseModel, Field, field_validator
 from app.validators.common import ORMModel
 
 DEFAULT_WEEKLY_HOURS: dict[str, list[int]] = {
-    "0": [8, 9, 10, 14, 15, 16, 17],
-    "1": [8, 9, 10, 14, 15, 16, 17, 18, 19],
-    "2": [8, 9, 10, 14, 15, 16, 17],
-    "3": [8, 9, 10, 14, 15, 16, 17, 18, 19],
-    "4": [8, 9, 10, 14, 15, 16, 17, 18, 19],
-    "5": [14, 15, 16],
+    "0": [480, 510, 540, 570, 600, 630, 840, 870, 900, 930, 960, 990, 1020],
+    "1": [
+        480,
+        510,
+        540,
+        570,
+        600,
+        630,
+        840,
+        870,
+        900,
+        930,
+        960,
+        990,
+        1020,
+        1050,
+        1080,
+        1110,
+        1140,
+    ],
+    "2": [480, 510, 540, 570, 600, 630, 840, 870, 900, 930, 960, 990, 1020],
+    "3": [
+        480,
+        510,
+        540,
+        570,
+        600,
+        630,
+        840,
+        870,
+        900,
+        930,
+        960,
+        990,
+        1020,
+        1050,
+        1080,
+        1110,
+        1140,
+    ],
+    "4": [
+        480,
+        510,
+        540,
+        570,
+        600,
+        630,
+        840,
+        870,
+        900,
+        930,
+        960,
+        990,
+        1020,
+        1050,
+        1080,
+        1110,
+        1140,
+    ],
+    "5": [840, 870, 900, 930, 960],
     "6": [],
 }
-DEFAULT_LUNCH_BLOCK_HOURS = [11, 12, 13]
+DEFAULT_LUNCH_BLOCK_HOURS = [660, 690, 720, 750, 780, 810]
 
 
 def normalize_hours(hours: list[int]) -> list[int]:
-    return sorted({hour for hour in hours if 0 <= hour <= 23})
+    normalized = set()
+    for hour in hours:
+        if 0 <= hour <= 23:
+            normalized.add(hour * 60)
+        elif 0 <= hour <= 1439 and hour % 30 == 0:
+            normalized.add(hour)
+    return sorted(normalized)
 
 
 class ScheduleConfigRead(ORMModel):

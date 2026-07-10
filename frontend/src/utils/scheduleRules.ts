@@ -1,9 +1,24 @@
 import type { TimeSlot } from "@/types/domain";
 
 const ATELIER_TIME_ZONE = "America/Sao_Paulo";
-const BLOCKED_STANDARD_HOURS = new Set([11, 12, 13]);
-const SATURDAY_HOURS = new Set([14, 15, 16]);
-const BASE_WEEKDAY_HOURS = new Set([8, 9, 10, 14, 15, 16, 17]);
+const BLOCKED_STANDARD_MINUTES = new Set([660, 690, 720, 750, 780, 810]);
+const SATURDAY_SLOT_MINUTES = new Set([840, 870, 900, 930, 960]);
+const BASE_WEEKDAY_SLOT_MINUTES = new Set([
+  480,
+  510,
+  540,
+  570,
+  600,
+  630,
+  840,
+  870,
+  900,
+  930,
+  960,
+  990,
+  1020
+]);
+const EXTENDED_SLOT_MINUTES = [1050, 1080, 1110, 1140];
 const EXTENDED_WEEKDAYS = new Set([2, 4, 5]);
 
 export function allowedHoursForDate(date: Date) {
@@ -12,16 +27,15 @@ export function allowedHoursForDate(date: Date) {
     return new Set<number>();
   }
   if (weekday === 6) {
-    return SATURDAY_HOURS;
+    return SATURDAY_SLOT_MINUTES;
   }
 
-  const hours = new Set(BASE_WEEKDAY_HOURS);
+  const hours = new Set(BASE_WEEKDAY_SLOT_MINUTES);
   if (EXTENDED_WEEKDAYS.has(weekday)) {
-    hours.add(18);
-    hours.add(19);
+    EXTENDED_SLOT_MINUTES.forEach((minute) => hours.add(minute));
   }
 
-  BLOCKED_STANDARD_HOURS.forEach((hour) => hours.delete(hour));
+  BLOCKED_STANDARD_MINUTES.forEach((minute) => hours.delete(minute));
   return hours;
 }
 
@@ -31,7 +45,7 @@ export function isAllowedScheduleDate(date: Date) {
 
 export function isAllowedTimeSlot(slot: TimeSlot) {
   const date = parseAtelierSlotDate(slot.startsAt);
-  return allowedHoursForDate(date).has(date.getHours());
+  return allowedHoursForDate(date).has(minutesFromDate(date));
 }
 
 export function filterAllowedTimeSlots(slots: TimeSlot[]) {
@@ -42,7 +56,7 @@ export function filterAllowedTimeSlots(slots: TimeSlot[]) {
 
 export function slotKeyFromStart(startsAt: string) {
   const date = parseAtelierSlotDate(startsAt);
-  return `${dateIdFromDate(date)}-${pad(date.getHours())}:00`;
+  return `${dateIdFromDate(date)}-${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 export function formatSlotTime(startsAt: string) {
@@ -108,6 +122,10 @@ function dateInAtelierTimeZone(value: string) {
 
 function dateIdFromDate(date: Date) {
   return [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join("-");
+}
+
+function minutesFromDate(date: Date) {
+  return date.getHours() * 60 + date.getMinutes();
 }
 
 function pad(value: number) {

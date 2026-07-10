@@ -12,7 +12,7 @@ from app.models.availability_slot import AvailabilitySlot
 from app.models.enums import AvailabilityStatus, PriceType
 from app.models.service import Service
 from app.utils.passwords import hash_password
-from app.utils.schedule_rules import allowed_hours_for_date
+from app.utils.schedule_rules import allowed_hours_for_date, slot_time_from_minutes
 
 INITIAL_SERVICES = [
     {
@@ -101,9 +101,10 @@ async def seed_availability(session: AsyncSession, months_ahead: int = 6) -> Non
     cursor = today
 
     while cursor <= end_date:
-        for hour in allowed_hours_for_date(datetime.combine(cursor, time())):
-            starts_at = datetime.combine(cursor, time(hour=hour))
-            ends_at = starts_at + timedelta(hours=1)
+        for slot_minute in allowed_hours_for_date(datetime.combine(cursor, time())):
+            hour, minute = slot_time_from_minutes(slot_minute)
+            starts_at = datetime.combine(cursor, time(hour=hour, minute=minute))
+            ends_at = starts_at + timedelta(minutes=30)
             new_slots.append(
                 {
                     "starts_at": starts_at,

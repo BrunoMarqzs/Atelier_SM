@@ -256,8 +256,11 @@ def test_admin_schedule_config_endpoint_requires_admin_and_returns_policy(monkey
                 "id": 1,
                 "opening_time": "08:00",
                 "closing_time": "19:00",
-                "lunch_block_hours": [11, 12, 13],
-                "weekly_hours": {"0": [8, 9, 10, 14, 15, 16, 17], "6": []},
+                "lunch_block_hours": [660, 690, 720, 750, 780, 810],
+                "weekly_hours": {
+                    "0": [480, 510, 540, 570, 600, 630, 840, 870, 900, 930, 960, 990, 1020],
+                    "6": [],
+                },
             }
 
     async def fake_admin_user():
@@ -272,7 +275,21 @@ def test_admin_schedule_config_endpoint_requires_admin_and_returns_policy(monkey
     assert response.status_code == 200
     body = response.json()
     assert body["opening_time"] == "08:00"
-    assert body["weekly_hours"]["0"] == [8, 9, 10, 14, 15, 16, 17]
+    assert body["weekly_hours"]["0"] == [
+        480,
+        510,
+        540,
+        570,
+        600,
+        630,
+        840,
+        870,
+        900,
+        930,
+        960,
+        990,
+        1020,
+    ]
     assert body["weekly_hours"]["6"] == []
 
 

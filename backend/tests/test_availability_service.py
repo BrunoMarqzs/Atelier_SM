@@ -8,14 +8,23 @@ from app.utils.errors import ConflictError
 from app.validators.availability import BlockSlotInput, ReleaseSlotInput
 
 
-def test_validate_business_window_rejects_half_hour() -> None:
+def test_validate_business_window_rejects_off_grid_minutes() -> None:
     service = AvailabilityService(session=None)  # type: ignore[arg-type]
 
-    with pytest.raises(ConflictError, match="hora cheia"):
+    with pytest.raises(ConflictError, match="minuto 00 ou 30"):
         service.validate_business_window(
-            datetime(2026, 6, 2, 9, 30),
-            datetime(2026, 6, 2, 10, 30),
+            datetime(2026, 6, 2, 9, 15),
+            datetime(2026, 6, 2, 9, 45),
         )
+
+
+def test_validate_business_window_allows_half_hour_slots() -> None:
+    service = AvailabilityService(session=None)  # type: ignore[arg-type]
+
+    service.validate_business_window(
+        datetime(2026, 6, 2, 9, 30),
+        datetime(2026, 6, 2, 10, 0),
+    )
 
 
 def test_validate_business_window_rejects_outside_business_hours() -> None:
@@ -24,7 +33,7 @@ def test_validate_business_window_rejects_outside_business_hours() -> None:
     with pytest.raises(ConflictError, match="disponibilidade"):
         service.validate_business_window(
             datetime(2026, 6, 1, 18, 0),
-            datetime(2026, 6, 1, 19, 0),
+            datetime(2026, 6, 1, 18, 30),
         )
 
 
@@ -33,19 +42,19 @@ def test_validate_business_window_allows_extended_hours_only_on_tuesday_thursday
 
     service.validate_business_window(
         datetime(2026, 6, 2, 8, 0),
-        datetime(2026, 6, 2, 9, 0),
+        datetime(2026, 6, 2, 8, 30),
     )
     service.validate_business_window(
         datetime(2026, 6, 2, 19, 0),
-        datetime(2026, 6, 2, 20, 0),
+        datetime(2026, 6, 2, 19, 30),
     )
     service.validate_business_window(
         datetime(2026, 6, 4, 18, 0),
-        datetime(2026, 6, 4, 19, 0),
+        datetime(2026, 6, 4, 18, 30),
     )
     service.validate_business_window(
         datetime(2026, 6, 5, 18, 0),
-        datetime(2026, 6, 5, 19, 0),
+        datetime(2026, 6, 5, 18, 30),
     )
 
 
@@ -55,54 +64,92 @@ def test_validate_business_window_rejects_sunday_and_lunch_hours() -> None:
     with pytest.raises(ConflictError, match="disponibilidade"):
         service.validate_business_window(
             datetime(2026, 6, 7, 14, 0),
-            datetime(2026, 6, 7, 15, 0),
+            datetime(2026, 6, 7, 14, 30),
         )
 
     with pytest.raises(ConflictError, match="disponibilidade"):
         service.validate_business_window(
+            datetime(2026, 6, 2, 11, 30),
             datetime(2026, 6, 2, 12, 0),
-            datetime(2026, 6, 2, 13, 0),
         )
 
 
 def test_allowed_hours_match_atelier_schedule() -> None:
     service = AvailabilityService(session=None)  # type: ignore[arg-type]
 
-    assert service.allowed_hours_for_date(datetime(2026, 6, 1)) == {8, 9, 10, 14, 15, 16, 17}
+    assert service.allowed_hours_for_date(datetime(2026, 6, 1)) == {
+        480,
+        510,
+        540,
+        570,
+        600,
+        630,
+        840,
+        870,
+        900,
+        930,
+        960,
+        990,
+        1020,
+    }
     assert service.allowed_hours_for_date(datetime(2026, 6, 2)) == {
-        8,
-        9,
-        10,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
+        480,
+        510,
+        540,
+        570,
+        600,
+        630,
+        840,
+        870,
+        900,
+        930,
+        960,
+        990,
+        1020,
+        1050,
+        1080,
+        1110,
+        1140,
     }
     assert service.allowed_hours_for_date(datetime(2026, 6, 4)) == {
-        8,
-        9,
-        10,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
+        480,
+        510,
+        540,
+        570,
+        600,
+        630,
+        840,
+        870,
+        900,
+        930,
+        960,
+        990,
+        1020,
+        1050,
+        1080,
+        1110,
+        1140,
     }
     assert service.allowed_hours_for_date(datetime(2026, 6, 5)) == {
-        8,
-        9,
-        10,
-        14,
-        15,
-        16,
-        17,
-        18,
-        19,
+        480,
+        510,
+        540,
+        570,
+        600,
+        630,
+        840,
+        870,
+        900,
+        930,
+        960,
+        990,
+        1020,
+        1050,
+        1080,
+        1110,
+        1140,
     }
-    assert service.allowed_hours_for_date(datetime(2026, 6, 6)) == {14, 15, 16}
+    assert service.allowed_hours_for_date(datetime(2026, 6, 6)) == {840, 870, 900, 930, 960}
     assert service.allowed_hours_for_date(datetime(2026, 6, 7)) == set()
 
 
@@ -111,18 +158,22 @@ def test_allowed_slot_uses_atelier_timezone_for_persisted_utc_slots() -> None:
 
     service.validate_business_window(
         datetime(2026, 6, 2, 11, 0, tzinfo=UTC),
+        datetime(2026, 6, 2, 11, 30, tzinfo=UTC),
+    )
+    service.validate_business_window(
+        datetime(2026, 6, 2, 11, 30, tzinfo=UTC),
         datetime(2026, 6, 2, 12, 0, tzinfo=UTC),
     )
 
     with pytest.raises(ConflictError, match="disponibilidade"):
         service.validate_business_window(
             datetime(2026, 6, 2, 14, 0, tzinfo=UTC),
-            datetime(2026, 6, 2, 15, 0, tzinfo=UTC),
+            datetime(2026, 6, 2, 14, 30, tzinfo=UTC),
         )
 
     service.validate_business_window(
         datetime(2026, 6, 2, 17, 0, tzinfo=UTC),
-        datetime(2026, 6, 2, 18, 0, tzinfo=UTC),
+        datetime(2026, 6, 2, 17, 30, tzinfo=UTC),
     )
 
 
@@ -131,12 +182,16 @@ async def test_async_allowed_slot_uses_atelier_timezone_for_persisted_utc_slots(
     service = AvailabilityService(session=None)  # type: ignore[arg-type]
 
     assert await service.is_allowed_slot_start(datetime(2026, 5, 26, 11, 0, tzinfo=UTC))
+    assert await service.is_allowed_slot_start(datetime(2026, 5, 26, 11, 30, tzinfo=UTC))
     assert await service.is_allowed_slot_start(datetime(2026, 5, 26, 12, 0, tzinfo=UTC))
+    assert await service.is_allowed_slot_start(datetime(2026, 5, 26, 12, 30, tzinfo=UTC))
     assert await service.is_allowed_slot_start(datetime(2026, 5, 26, 13, 0, tzinfo=UTC))
     assert not await service.is_allowed_slot_start(datetime(2026, 5, 26, 14, 0, tzinfo=UTC))
+    assert not await service.is_allowed_slot_start(datetime(2026, 5, 26, 14, 30, tzinfo=UTC))
     assert not await service.is_allowed_slot_start(datetime(2026, 5, 26, 15, 0, tzinfo=UTC))
     assert not await service.is_allowed_slot_start(datetime(2026, 5, 26, 16, 0, tzinfo=UTC))
     assert await service.is_allowed_slot_start(datetime(2026, 5, 26, 21, 0, tzinfo=UTC))
+    assert await service.is_allowed_slot_start(datetime(2026, 5, 26, 21, 30, tzinfo=UTC))
     assert await service.is_allowed_slot_start(datetime(2026, 5, 26, 22, 0, tzinfo=UTC))
 
 
@@ -190,7 +245,7 @@ async def test_reserve_slot_rejects_blocked_slot(availability_slot_factory) -> N
 async def test_reserve_slot_rejects_legacy_invalid_lunch_slot(availability_slot_factory) -> None:
     slot = availability_slot_factory(status=AvailabilityStatus.AVAILABLE)
     slot.starts_at = datetime(2026, 6, 2, 12, 0)
-    slot.ends_at = datetime(2026, 6, 2, 13, 0)
+    slot.ends_at = datetime(2026, 6, 2, 12, 30)
     service = AvailabilityService(session=None)  # type: ignore[arg-type]
 
     class FakeRepository:
@@ -231,8 +286,22 @@ async def test_ensure_business_slots_materializes_missing_hours() -> None:
         datetime(2026, 6, 2, 20, 0),
     )
 
-    assert len(created_slots) == 7
-    assert {slot.starts_at.hour for slot in created_slots} == {10, 14, 15, 16, 17, 18, 19}
+    assert len(created_slots) == 13
+    assert {slot.starts_at.hour * 60 + slot.starts_at.minute for slot in created_slots} == {
+        600,
+        630,
+        840,
+        870,
+        900,
+        930,
+        960,
+        990,
+        1020,
+        1050,
+        1080,
+        1110,
+        1140,
+    }
     assert all(slot.status == AvailabilityStatus.AVAILABLE for slot in created_slots)
 
 
@@ -245,7 +314,7 @@ def availability_slot_factory():
         return AvailabilitySlot(
             id=1,
             starts_at=starts_at,
-            ends_at=starts_at + timedelta(hours=1),
+            ends_at=starts_at + timedelta(minutes=30),
             status=status,
         )
 
