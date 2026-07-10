@@ -16,7 +16,19 @@ from app.validators.schedule import (
     DEFAULT_WEEKLY_HOURS,
     ScheduleConfigUpdate,
     ScheduleExceptionCreate,
+    normalize_hours,
 )
+
+OLD_DEFAULT_WEEKLY_HOURS: dict[str, list[int]] = {
+    "0": [8, 9, 10, 14, 15, 16, 17],
+    "1": [8, 9, 10, 14, 15, 16, 17, 18, 19],
+    "2": [8, 9, 10, 14, 15, 16, 17],
+    "3": [8, 9, 10, 14, 15, 16, 17, 18, 19],
+    "4": [8, 9, 10, 14, 15, 16, 17, 18, 19],
+    "5": [14, 15, 16],
+    "6": [],
+}
+OLD_DEFAULT_LUNCH_BLOCK_HOURS = [11, 12, 13]
 
 
 class SchedulePolicyService:
@@ -30,6 +42,7 @@ class SchedulePolicyService:
             return self.default_config()
         config = await self.config_repository.get_singleton()
         if config and hasattr(config, "weekly_hours"):
+            self._upgrade_legacy_default_config(config)
             return config
         config = self.default_config()
         if not hasattr(self.config_repository.session, "add"):
@@ -45,11 +58,11 @@ class SchedulePolicyService:
         if payload.closing_time is not None:
             config.closing_time = payload.closing_time
         if payload.lunch_block_hours is not None:
-            config.lunch_block_hours = payload.lunch_block_hours
+            config.lunch_block_hours = normalize_hours(payload.lunch_block_hours)
         if payload.weekly_hours is not None:
             merged = dict(config.weekly_hours or DEFAULT_WEEKLY_HOURS)
             merged.update(payload.weekly_hours)
-            config.weekly_hours = merged
+            config.weekly_hours = self._normalize_weekly_hours(merged)
         await self.config_repository.session.flush()
         return config
 
@@ -87,13 +100,17 @@ class SchedulePolicyService:
         if exception and hasattr(exception, "kind"):
             if exception.kind == "closed":
                 return set()
-            return set(exception.hours or [])
+            return set(normalize_hours(exception.hours or []))
 
         config = await self.get_config()
         hours = set(
-            (config.weekly_hours or DEFAULT_WEEKLY_HOURS).get(str(atelier_date_time.weekday()), [])
+            normalize_hours(
+                (config.weekly_hours or DEFAULT_WEEKLY_HOURS).get(
+                    str(atelier_date_time.weekday()), []
+                )
+            )
         )
-        blocked_hours = set(config.lunch_block_hours or DEFAULT_LUNCH_BLOCK_HOURS)
+        blocked_hours = set(normalize_hours(config.lunch_block_hours or DEFAULT_LUNCH_BLOCK_HOURS))
         return hours - blocked_hours
 
     @staticmethod
@@ -105,3 +122,26 @@ class SchedulePolicyService:
             lunch_block_hours=list(DEFAULT_LUNCH_BLOCK_HOURS),
             weekly_hours=dict(DEFAULT_WEEKLY_HOURS),
         )
+
+    @staticmethod
+    def _normalize_weekly_hours(weekly_hours: dict[str, list[int]]) -> dict[str, list[int]]:
+        return {
+            str(day): normalize_hours(hours)
+            for day, hours in weekly_hours.items()
+            if str(day) in DEFAULT_WEEKLY_HOURS
+        }
+
+    @staticmethod
+    def _upgrade_legacy_default_config(config: ScheduleConfig) -> None:
+        if (config.weekly_hours or {}) == OLD_DEFAULT_WEEKLY_HOURS:
+            config.weekly_hours = dict(DEFAULT_WEEKLY_HOURS)
+        else:
+            config.weekly_hours = SchedulePolicyService._normalize_weekly_hours(
+                config.weekly_hours or DEFAULT_WEEKLY_HOURS
+            )
+        if (config.lunch_block_hours or []) == OLD_DEFAULT_LUNCH_BLOCK_HOURS:
+            config.lunch_block_hours = list(DEFAULT_LUNCH_BLOCK_HOURS)
+        else:
+            config.lunch_block_hours = normalize_hours(
+                config.lunch_block_hours or DEFAULT_LUNCH_BLOCK_HOURS
+            )
