@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import builtins
+
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -45,7 +47,7 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
         status: AppointmentStatus | None = None,
         client_name: str | None = None,
         phone: str | None = None,
-    ) -> list[AppointmentRequest]:
+    ) -> builtins.list[AppointmentRequest]:
         statement = select(AppointmentRequest).options(
             selectinload(AppointmentRequest.images),
             selectinload(AppointmentRequest.client),
@@ -66,7 +68,10 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
         )
         return list(result.scalars().all())
 
-    async def list_by_client_phone(self, normalized_phone: str) -> list[AppointmentRequest]:
+    async def list_by_client_phone(
+        self,
+        normalized_phone: str,
+    ) -> builtins.list[AppointmentRequest]:
         result = await self.session.execute(
             select(AppointmentRequest)
             .join(AppointmentRequest.client)
