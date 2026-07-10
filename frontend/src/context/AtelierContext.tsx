@@ -145,7 +145,7 @@ export function AtelierProvider({ children }: PropsWithChildren) {
       },
       toggleSlotBlock: async (slot) => {
         setError(undefined);
-        if (blockedSlotIds.includes(slot.slotKey)) {
+        if (slot.status === "blocked") {
           await releaseRemoteSlot(slot);
         } else {
           await blockRemoteSlot(slot);
