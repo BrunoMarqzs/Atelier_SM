@@ -25,6 +25,7 @@ dev = [
 [project.scripts]
 atelier-db-seed = "app.commands.seed_database:main"
 atelier-db-setup = "app.commands.setup_database:main"
+atelier-deploy-bootstrap = "app.commands.deploy_bootstrap:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

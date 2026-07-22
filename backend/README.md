@@ -92,6 +92,67 @@ Para rodar tudo em um passo:
 .\.venv\Scripts\python.exe -m app.commands.setup_database
 ```
 
+## Boot/Deploy de Produção
+
+O projeto possui um comando operacional idempotente para preparar o backend antes de subir uma versão nova:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.commands.deploy_bootstrap
+```
+
+Esse comando:
+
+1. valida variáveis críticas do ambiente;
+2. testa a conexão com o PostgreSQL com novas tentativas;
+3. executa `alembic upgrade head`;
+4. sincroniza admin inicial, serviços iniciais e agenda dos próximos 6 meses.
+
+Para apenas validar ambiente e banco:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.commands.deploy_bootstrap --check-only
+```
+
+Para rodar somente migrations:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.commands.deploy_bootstrap --migrate-only
+```
+
+Para rodar somente seeds:
+
+```powershell
+.\.venv\Scripts\python.exe -m app.commands.deploy_bootstrap --seed-only
+```
+
+### Render Free
+
+No plano Free, o campo `Pre-Deploy Command` pode não estar disponível. Nesse caso, use um destes caminhos:
+
+1. abrir o **Shell** do serviço no Render e rodar:
+
+```bash
+python -m app.commands.deploy_bootstrap
+```
+
+2. quando houver uma migration nova, trocar temporariamente o **Build Command** para:
+
+```bash
+pip install -e . && python -m app.commands.deploy_bootstrap --migrate-only
+```
+
+Depois do deploy bem-sucedido, volte o **Build Command** para:
+
+```bash
+pip install -e .
+```
+
+Evite rodar migrations automaticamente dentro do startup normal da API. O servidor deve iniciar com:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port $PORT
+```
+
 ## Servidor
 
 ```powershell

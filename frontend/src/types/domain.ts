@@ -21,6 +21,26 @@ export type Service = {
   highlighted: boolean;
 };
 
+export type AnnouncementKind = "promotion" | "notice" | "news" | "schedule";
+
+export type AnnouncementAction = "none" | "create_order" | "client_history" | "external_url";
+
+export type Announcement = {
+  id: number;
+  title: string;
+  body: string;
+  kind: AnnouncementKind;
+  ctaLabel?: string;
+  ctaAction: AnnouncementAction;
+  ctaUrl?: string;
+  startsAt?: string;
+  endsAt?: string;
+  priority: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type TimeSlot = {
   id: number;
   startsAt: string;

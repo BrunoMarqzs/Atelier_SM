@@ -8,11 +8,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config.database import get_session
 from app.models.request_image import RequestImage
+from app.services.announcement_service import AnnouncementService
 from app.services.availability_service import AvailabilityService
 from app.services.booking_facade import BookingFacade
 from app.services.request_service import AppointmentRequestService
 from app.services.service_service import ServiceService
 from app.strategies.storage import get_storage_strategy
+from app.validators.announcement import AnnouncementRead
 from app.validators.availability import AvailabilitySlotRead
 from app.validators.request import (
     AppointmentRequestCreate,
@@ -23,6 +25,13 @@ from app.validators.request import (
 from app.validators.service import ServiceRead
 
 router = APIRouter(tags=["Public"])
+
+
+@router.get("/announcements", response_model=list[AnnouncementRead])
+async def list_public_announcements(
+    session: AsyncSession = Depends(get_session),
+) -> list[AnnouncementRead]:
+    return await AnnouncementService(session).list_public_active()
 
 
 @router.get("/services", response_model=list[ServiceRead])
