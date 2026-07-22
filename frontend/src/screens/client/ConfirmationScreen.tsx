@@ -40,6 +40,11 @@ export function ConfirmationScreen({ navigation, route }: Props) {
           <Text style={styles.copy}>
             Pedido #{route.params.requestId} registrado. O atelier avaliará as informações e entrará em contato pelo telefone informado.
           </Text>
+          <PremiumSurface style={styles.addressCard}>
+            <Text style={styles.addressLabel}>Endereco do atendimento</Text>
+            <Text style={styles.addressText}>Rua Matarazzo, 119</Text>
+            <Text style={styles.addressMuted}>Bairro Santa Filomena</Text>
+          </PremiumSurface>
           {route.params.publicCode ? (
             <PremiumSurface style={styles.publicCard}>
               <Text style={styles.publicLabel}>Link de acompanhamento</Text>
@@ -97,6 +102,28 @@ const styles = StyleSheet.create({
   copy: {
     ...theme.typography.body,
     color: theme.colors.graphite,
+    textAlign: "center"
+  },
+  addressCard: {
+    alignSelf: "stretch",
+    backgroundColor: theme.colors.white,
+    gap: 2
+  },
+  addressLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.roseGoldDark,
+    fontWeight: "800",
+    textAlign: "center",
+    textTransform: "uppercase"
+  },
+  addressText: {
+    ...theme.typography.section,
+    color: theme.colors.ink,
+    textAlign: "center"
+  },
+  addressMuted: {
+    ...theme.typography.body,
+    color: theme.colors.taupe,
     textAlign: "center"
   },
   publicCard: {

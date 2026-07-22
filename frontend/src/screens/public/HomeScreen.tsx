@@ -68,6 +68,14 @@ export function HomeScreen({ navigation }: HomeProps) {
         />
       </FadeInView>
 
+      <FadeInView delay={135}>
+        <View style={styles.addressCard}>
+          <Text style={styles.addressLabel}>Endereco do atelier</Text>
+          <Text style={styles.addressText}>Rua Matarazzo, 119</Text>
+          <Text style={styles.addressMuted}>Bairro Santa Filomena</Text>
+        </View>
+      </FadeInView>
+
       <FadeInView delay={150}>
         <PwaInstallCard />
       </FadeInView>
@@ -166,6 +174,31 @@ const styles = StyleSheet.create({
   actions: {
     gap: theme.spacing.sm,
     marginTop: theme.spacing.lg
+  },
+  addressCard: {
+    backgroundColor: theme.colors.white,
+    borderColor: theme.colors.champagne,
+    borderRadius: theme.radius.lg,
+    borderWidth: 1,
+    gap: 2,
+    marginTop: theme.spacing.md,
+    paddingHorizontal: theme.spacing.lg,
+    paddingVertical: theme.spacing.md,
+    ...theme.shadows.soft
+  },
+  addressLabel: {
+    ...theme.typography.caption,
+    color: theme.colors.roseGoldDark,
+    fontWeight: "800",
+    textTransform: "uppercase"
+  },
+  addressText: {
+    ...theme.typography.section,
+    color: theme.colors.ink
+  },
+  addressMuted: {
+    ...theme.typography.body,
+    color: theme.colors.taupe
   },
   sectionHeader: {
     marginBottom: theme.spacing.md,
