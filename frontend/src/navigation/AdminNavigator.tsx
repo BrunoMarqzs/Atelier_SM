@@ -5,6 +5,7 @@ import { Modal, Pressable, StyleSheet, Text, View } from "react-native";
 
 import { AnimatedPressable } from "@/animations/AnimatedPressable";
 import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
+import { AdminAnnouncementsScreen } from "@/screens/admin/AdminAnnouncementsScreen";
 import { AdminAgendaScreen } from "@/screens/admin/AdminAgendaScreen";
 import { AdminAuditScreen } from "@/screens/admin/AdminAuditScreen";
 import { AdminDashboardScreen } from "@/screens/admin/AdminDashboardScreen";
@@ -24,6 +25,7 @@ const adminTabs: Array<{
   title: string;
 }> = [
   { icon: "grid-outline", name: "AdminDashboard", title: "Painel" },
+  { icon: "megaphone-outline", name: "AdminAnnouncements", title: "Vitrine" },
   { icon: "file-tray-full-outline", name: "AdminRequests", title: "Pedidos" },
   { icon: "calendar-outline", name: "AdminAgenda", title: "Agenda" },
   { icon: "cut-outline", name: "AdminServices", title: "Serviços" },
@@ -158,6 +160,7 @@ export function AdminNavigator() {
       })}
     >
       <Tab.Screen component={AdminDashboardScreen} name="AdminDashboard" options={{ title: "Painel" }} />
+      <Tab.Screen component={AdminAnnouncementsScreen} name="AdminAnnouncements" options={{ title: "Vitrine" }} />
       <Tab.Screen component={AdminRequestsScreen} name="AdminRequests" options={{ title: "Pedidos" }} />
       <Tab.Screen component={AdminAgendaScreen} name="AdminAgenda" options={{ title: "Agenda" }} />
       <Tab.Screen component={AdminServicesScreen} name="AdminServices" options={{ title: "Serviços" }} />
