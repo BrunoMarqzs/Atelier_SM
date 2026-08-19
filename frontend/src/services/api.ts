@@ -399,6 +399,18 @@ export async function fetchAvailability(startsAt: string, endsAt: string): Promi
   return data.map(mapSlot);
 }
 
+export async function fetchAdminAvailability(startsAt: string, endsAt: string): Promise<TimeSlot[]> {
+  const params = new URLSearchParams({ starts_at: startsAt, ends_at: endsAt });
+  const response = await fetch(`${API_BASE_URL}/admin/availability?${params.toString()}`, {
+    headers: adminHeaders()
+  });
+  if (!response.ok) {
+    throw new Error(await apiErrorMessage(response, "Não foi possível carregar a agenda administrativa."));
+  }
+  const data = (await response.json()) as BackendSlot[];
+  return data.map(mapSlot);
+}
+
 export async function submitAppointmentRequest(payload: {
   client: { name: string; phone: string };
   serviceId: number;

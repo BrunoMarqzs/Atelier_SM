@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,17 +28,37 @@ class AvailabilityService:
     async def list_available(
         self, starts_at: datetime, ends_at: datetime
     ) -> list[AvailabilitySlot]:
+        return await self._list_for_window(starts_at, ends_at, keep_booked_on_closed_days=False)
+
+    async def list_for_admin(
+        self, starts_at: datetime, ends_at: datetime
+    ) -> list[AvailabilitySlot]:
+        return await self._list_for_window(starts_at, ends_at, keep_booked_on_closed_days=True)
+
+    async def _list_for_window(
+        self,
+        starts_at: datetime,
+        ends_at: datetime,
+        *,
+        keep_booked_on_closed_days: bool,
+    ) -> list[AvailabilitySlot]:
         await self.ensure_business_slots(starts_at, ends_at)
         slots = await self.repository.list_between(starts_at, ends_at)
-        filtered_slots = [
-            slot
-            for slot in slots
-            if is_allowed_slot_start(slot.starts_at)
-            and (
-                slot.ends_at - slot.starts_at == timedelta(minutes=SLOT_MINUTES)
-                or slot.status == AvailabilityStatus.BOOKED
+        allowed_minutes_by_date: dict[date, set[int]] = {}
+        filtered_slots = []
+        for slot in slots:
+            atelier_start = to_atelier_datetime(slot.starts_at)
+            allowed_minutes = allowed_minutes_by_date.get(atelier_start.date())
+            if allowed_minutes is None:
+                allowed_minutes = await self.schedule_policy.allowed_hours_for_date(slot.starts_at)
+                allowed_minutes_by_date[atelier_start.date()] = allowed_minutes
+            allowed = minute_of_day(atelier_start) in allowed_minutes
+            valid_duration = slot.ends_at - slot.starts_at == timedelta(minutes=SLOT_MINUTES)
+            keep_existing_booking = (
+                keep_booked_on_closed_days and slot.status == AvailabilityStatus.BOOKED
             )
-        ]
+            if (allowed and valid_duration) or keep_existing_booking:
+                filtered_slots.append(slot)
         return sorted(filtered_slots, key=lambda slot: slot.starts_at)
 
     async def ensure_business_slots(self, starts_at: datetime, ends_at: datetime) -> None:
