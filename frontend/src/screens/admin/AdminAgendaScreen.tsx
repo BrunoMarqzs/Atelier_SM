@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { Alert, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 
 import { AnimatedPressable } from "@/animations/AnimatedPressable";
 import { WhatsAppNotifyButton } from "@/components/admin/WhatsAppNotifyButton";
@@ -14,9 +14,14 @@ import { Screen } from "@/components/common/Screen";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useAtelier } from "@/context/AtelierContext";
-import { fetchAvailability } from "@/services/api";
+import {
+  deleteAdminScheduleException,
+  fetchAdminAvailability,
+  fetchAdminScheduleExceptions,
+  saveAdminScheduleException
+} from "@/services/api";
 import { theme } from "@/theme";
-import type { TimeSlot } from "@/types/domain";
+import type { ScheduleException, TimeSlot } from "@/types/domain";
 import { buildCalendarDays, formatSelectedDay, toLocalDateTimeInput } from "@/utils/calendar";
 
 const calendarDays = buildCalendarDays(6);
@@ -84,9 +89,11 @@ export function AdminAgendaScreen() {
   const [viewMode, setViewMode] = useState<AgendaView>("day");
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | undefined>();
   const [remoteSlots, setRemoteSlots] = useState<TimeSlot[]>([]);
+  const [scheduleExceptions, setScheduleExceptions] = useState<ScheduleException[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(true);
   const [agendaError, setAgendaError] = useState<string>();
   const [blocking, setBlocking] = useState(false);
+  const [changingDay, setChangingDay] = useState(false);
   const selectedDay = calendarDays.find((day) => day.id === selectedDayId) ?? calendarDays[0];
   const visibleDays = useMemo(() => {
     if (viewMode === "day") {
@@ -135,20 +142,92 @@ export function AdminAgendaScreen() {
   const availableSlots = slots.filter((slot) => slot.status === "available").length;
   const bookedSlots = slots.filter((slot) => slot.status === "booked").length;
   const blockedSlots = slots.filter((slot) => slot.status === "blocked").length;
+  const selectedClosedException = scheduleExceptions.find(
+    (exception) => exception.exceptionDate === selectedDay.id && exception.kind === "closed"
+  );
 
   async function loadSlots() {
     const range = viewRange(selectedDay.date, viewMode);
     setAgendaError(undefined);
     setLoadingSlots(true);
     try {
-      const loadedSlots = await fetchAvailability(range.startsAt, range.endsAt);
+      const [loadedSlots, loadedExceptions] = await Promise.all([
+        fetchAdminAvailability(range.startsAt, range.endsAt),
+        fetchAdminScheduleExceptions()
+      ]);
       setRemoteSlots(loadedSlots);
+      setScheduleExceptions(loadedExceptions);
     } catch {
       setRemoteSlots([]);
       setAgendaError("Não foi possível conectar à agenda agora. Tente novamente em alguns instantes.");
     } finally {
       setLoadingSlots(false);
     }
+  }
+
+  function confirmDayChange(message: string, onConfirm: () => Promise<void>) {
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      if (window.confirm(message)) {
+        void onConfirm();
+      }
+      return;
+    }
+    Alert.alert("Confirmar alteração", message, [
+      { text: "Cancelar", style: "cancel" },
+      { text: "Confirmar", onPress: () => void onConfirm() }
+    ]);
+  }
+
+  async function closeSelectedDay() {
+    setChangingDay(true);
+    setAgendaError(undefined);
+    try {
+      await saveAdminScheduleException({
+        exceptionDate: selectedDay.id,
+        kind: "closed",
+        reason: "Dia bloqueado pela administração"
+      });
+      setSelectedSlot(undefined);
+      await loadSlots();
+    } catch {
+      setAgendaError("Não foi possível bloquear o dia. Nenhum horário foi alterado.");
+    } finally {
+      setChangingDay(false);
+    }
+  }
+
+  async function reopenSelectedDay() {
+    if (!selectedClosedException) {
+      return;
+    }
+    setChangingDay(true);
+    setAgendaError(undefined);
+    try {
+      await deleteAdminScheduleException(selectedClosedException.id);
+      setSelectedSlot(undefined);
+      await loadSlots();
+    } catch {
+      setAgendaError("Não foi possível reabrir o dia. A agenda continua protegida como fechada.");
+    } finally {
+      setChangingDay(false);
+    }
+  }
+
+  function requestDayChange() {
+    if (selectedClosedException) {
+      confirmDayChange(
+        `Deseja reabrir ${formatSelectedDay(selectedDay)}? Os horários voltarão a seguir as regras normais da agenda.`,
+        reopenSelectedDay
+      );
+      return;
+    }
+    const reservationWarning = bookedSlots
+      ? `\n\nEste dia possui ${bookedSlots} ${bookedSlots === 1 ? "horário reservado" : "horários reservados"}. As reservas existentes serão preservadas e continuarão visíveis para o administrador.`
+      : "";
+    confirmDayChange(
+      `Deseja bloquear ${formatSelectedDay(selectedDay)} por inteiro? Novos agendamentos serão impedidos.${reservationWarning}`,
+      closeSelectedDay
+    );
   }
 
   useEffect(() => {
@@ -260,6 +339,26 @@ export function AdminAgendaScreen() {
             <Text style={styles.summaryCaption}>Visão operacional do dia selecionado</Text>
           </View>
         </View>
+        {selectedClosedException ? (
+          <Notice
+            message="Novos agendamentos estão impedidos. Reservas existentes permanecem preservadas."
+            title="Dia fechado"
+            tone="warning"
+          />
+        ) : null}
+        <PremiumButton
+          disabled={changingDay || loadingSlots}
+          icon={selectedClosedException ? "lock-open-outline" : "calendar-clear-outline"}
+          label={
+            changingDay
+              ? "Salvando alteração..."
+              : selectedClosedException
+                ? "Reabrir dia"
+                : "Bloquear dia inteiro"
+          }
+          onPress={requestDayChange}
+          variant="secondary"
+        />
         <View style={styles.summaryRow}>
           <View style={styles.summaryChip}>
             <Text style={styles.summaryValue}>{availableSlots}</Text>
@@ -353,7 +452,7 @@ export function AdminAgendaScreen() {
               </Text>
             )}
 
-            {selectedSlot.status !== "booked" ? (
+            {selectedSlot.status !== "booked" && !selectedClosedException ? (
               <PremiumButton
                 disabled={blocking}
                 icon={selectedSlot.status === "blocked" ? "lock-open-outline" : "ban-outline"}

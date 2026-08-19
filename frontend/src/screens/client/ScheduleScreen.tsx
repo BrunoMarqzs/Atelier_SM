@@ -140,8 +140,8 @@ export function ScheduleScreen({ navigation }: Props) {
       {!loadingSlots && slots.length === 0 ? (
         <EmptyState
           icon="calendar-clear-outline"
-          message="Não encontramos horários para este dia. Escolha outra data ou atualize a agenda."
-          title="Nenhum horário disponível"
+          message="Neste dia não estaremos aceitando agendamentos. Marque para um próximo dia."
+          title="Horários bloqueados pelo administrador"
         >
           <PremiumButton
             icon="refresh-outline"

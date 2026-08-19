@@ -339,21 +339,33 @@ def test_admin_schedule_exception_endpoint_upserts_closed_day(monkeypatch) -> No
         def __init__(self, session) -> None:
             self.session = session
 
+        async def get_exception_by_date(self, _exception_date):
+            return None
+
         async def upsert_exception(self, payload):
             assert str(payload.exception_date) == "2026-12-24"
             assert payload.kind == "closed"
-            return {
-                "id": 11,
-                "exception_date": payload.exception_date,
-                "kind": payload.kind,
-                "hours": payload.hours,
-                "reason": payload.reason,
-            }
+            return SimpleNamespace(
+                id=11,
+                exception_date=payload.exception_date,
+                kind=payload.kind,
+                hours=payload.hours,
+                reason=payload.reason,
+            )
+
+    class FakeAuditService:
+        def __init__(self, session) -> None:
+            self.session = session
+
+        async def record(self, **payload):
+            assert payload["action"] == "schedule_day_closed"
+            assert payload["changed_by"] == "admin@atelier.test"
 
     async def fake_admin_user():
-        return object()
+        return SimpleNamespace(email="admin@atelier.test")
 
     monkeypatch.setattr(admin, "SchedulePolicyService", FakeSchedulePolicyService)
+    monkeypatch.setattr(admin, "AuditService", FakeAuditService)
     client = build_client()
     client.app.dependency_overrides[require_admin_user] = fake_admin_user
 
@@ -370,3 +382,14 @@ def test_admin_schedule_exception_endpoint_upserts_closed_day(monkeypatch) -> No
     body = response.json()
     assert body["exception_date"] == "2026-12-24"
     assert body["kind"] == "closed"
+
+
+def test_admin_availability_requires_authentication() -> None:
+    client = build_client()
+
+    response = client.get(
+        "/api/admin/availability",
+        params={"starts_at": "2026-12-24T00:00:00", "ends_at": "2026-12-24T23:59:59"},
+    )
+
+    assert response.status_code == 401

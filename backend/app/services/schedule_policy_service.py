@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -71,6 +71,11 @@ class SchedulePolicyService:
             return []
         return await self.exception_repository.list()
 
+    async def get_exception_by_date(self, exception_date: date) -> ScheduleException | None:
+        if not self.exception_repository:
+            return None
+        return await self.exception_repository.get_by_date(exception_date)
+
     async def upsert_exception(self, payload: ScheduleExceptionCreate) -> ScheduleException:
         if not self.exception_repository:
             raise NotFoundError("Exceções de agenda indisponíveis.")
@@ -83,13 +88,14 @@ class SchedulePolicyService:
             return existing
         return await self.exception_repository.add(ScheduleException(**payload.model_dump()))
 
-    async def delete_exception(self, exception_id: int) -> None:
+    async def delete_exception(self, exception_id: int) -> ScheduleException:
         if not self.exception_repository:
             raise NotFoundError("Exceções de agenda indisponíveis.")
         exception = await self.exception_repository.get(exception_id)
         if not exception:
             raise NotFoundError("Exceção de agenda não encontrada.")
         await self.exception_repository.delete(exception)
+        return exception
 
     async def allowed_hours_for_date(self, date_time: datetime) -> set[int]:
         if not self.config_repository or not self.exception_repository:

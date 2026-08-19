@@ -1,11 +1,14 @@
 # ruff: noqa: B008
 
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.commands.availability_commands import BlockSlotCommand
 from app.commands.request_commands import ChangeRequestStatusCommand
 from app.config.database import get_session
+from app.models.admin_user import AdminUser
 from app.models.enums import AppointmentStatus
 from app.services.announcement_service import AnnouncementService
 from app.services.audit_service import AuditService
@@ -185,12 +188,35 @@ async def list_schedule_exceptions(
     return await SchedulePolicyService(session).list_exceptions()
 
 
+@router.get("/availability", response_model=list[AvailabilitySlotRead])
+async def list_admin_availability(
+    starts_at: datetime = Query(...),
+    ends_at: datetime = Query(...),
+    session: AsyncSession = Depends(get_session),
+) -> list[AvailabilitySlotRead]:
+    slots = await AvailabilityService(session).list_for_admin(starts_at, ends_at)
+    await session.commit()
+    return slots
+
+
 @router.post("/schedule/exceptions", response_model=ScheduleExceptionRead, status_code=201)
 async def upsert_schedule_exception(
     payload: ScheduleExceptionCreate,
     session: AsyncSession = Depends(get_session),
+    admin_user: AdminUser = Depends(require_admin_user),
 ) -> ScheduleExceptionRead:
-    exception = await SchedulePolicyService(session).upsert_exception(payload)
+    policy = SchedulePolicyService(session)
+    existing = await policy.get_exception_by_date(payload.exception_date)
+    before = _schedule_exception_snapshot(existing)
+    exception = await policy.upsert_exception(payload)
+    await AuditService(session).record(
+        entity_type="schedule_exception",
+        entity_id=exception.id,
+        action="schedule_day_closed" if payload.kind == "closed" else "schedule_exception_saved",
+        changed_by=admin_user.email,
+        before=before,
+        after=_schedule_exception_snapshot(exception),
+    )
     await session.commit()
     await session.refresh(exception)
     return exception
@@ -200,10 +226,30 @@ async def upsert_schedule_exception(
 async def delete_schedule_exception(
     exception_id: int,
     session: AsyncSession = Depends(get_session),
+    admin_user: AdminUser = Depends(require_admin_user),
 ) -> MessageResponse:
-    await SchedulePolicyService(session).delete_exception(exception_id)
+    exception = await SchedulePolicyService(session).delete_exception(exception_id)
+    await AuditService(session).record(
+        entity_type="schedule_exception",
+        entity_id=exception.id,
+        action="schedule_exception_removed",
+        changed_by=admin_user.email,
+        before=_schedule_exception_snapshot(exception),
+        after=None,
+    )
     await session.commit()
     return MessageResponse(message="Exceção de agenda removida com sucesso.")
+
+
+def _schedule_exception_snapshot(exception) -> dict | None:
+    if exception is None:
+        return None
+    return {
+        "exception_date": str(exception.exception_date),
+        "kind": exception.kind,
+        "hours": exception.hours,
+        "reason": exception.reason,
+    }
 
 
 @router.patch("/requests/{request_id}/status", response_model=AppointmentRequestRead)

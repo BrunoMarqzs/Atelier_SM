@@ -343,6 +343,61 @@ async def test_list_available_materializes_missing_half_hour_slots() -> None:
     assert all(slot.ends_at - slot.starts_at == timedelta(minutes=30) for slot in slots)
 
 
+@pytest.mark.anyio
+async def test_closed_day_hides_preexisting_slots_from_public_but_keeps_bookings_for_admin(
+    availability_slot_factory,
+) -> None:
+    available = availability_slot_factory(status=AvailabilityStatus.AVAILABLE)
+    booked = availability_slot_factory(status=AvailabilityStatus.BOOKED)
+    booked.id = 2
+    booked.starts_at += timedelta(minutes=30)
+    booked.ends_at += timedelta(minutes=30)
+
+    class FakeRepository:
+        async def list_between(self, _starts_at, _ends_at):
+            return [available, booked]
+
+    class ClosedDayPolicy:
+        async def allowed_hours_for_date(self, _date_time):
+            return set()
+
+    service = AvailabilityService(session=None)  # type: ignore[arg-type]
+    service.repository = FakeRepository()
+    service.schedule_policy = ClosedDayPolicy()
+
+    async def skip_materialization(_starts_at, _ends_at):
+        return None
+
+    service.ensure_business_slots = skip_materialization
+    starts_at = datetime(2026, 6, 2, 0, 0)
+    ends_at = datetime(2026, 6, 2, 23, 59)
+
+    assert await service.list_available(starts_at, ends_at) == []
+    assert await service.list_for_admin(starts_at, ends_at) == [booked]
+
+
+@pytest.mark.anyio
+async def test_closed_day_rejects_reservation_of_preexisting_available_slot(
+    availability_slot_factory,
+) -> None:
+    slot = availability_slot_factory(status=AvailabilityStatus.AVAILABLE)
+
+    class FakeRepository:
+        async def get_for_update(self, _slot_id):
+            return slot
+
+    class ClosedDayPolicy:
+        async def allowed_hours_for_date(self, _date_time):
+            return set()
+
+    service = AvailabilityService(session=None)  # type: ignore[arg-type]
+    service.repository = FakeRepository()
+    service.schedule_policy = ClosedDayPolicy()
+
+    with pytest.raises(ConflictError, match="disponibilidade"):
+        await service.reserve_slot(slot.id)
+
+
 @pytest.fixture
 def availability_slot_factory():
     from app.models.availability_slot import AvailabilitySlot
