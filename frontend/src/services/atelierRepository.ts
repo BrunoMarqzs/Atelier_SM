@@ -94,7 +94,7 @@ export async function updateRemoteRequestStatus(
   status: AppointmentStatus,
   options?: { comment?: string; estimatedPrice?: number }
 ) {
-  await updateAdminRequestStatus(requestId, status, options);
+  return updateAdminRequestStatus(requestId, status, options);
 }
 
 export async function addRemoteRequestComment(requestId: number, comment: string) {

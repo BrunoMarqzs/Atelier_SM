@@ -4,6 +4,7 @@ from sqlalchemy.orm import selectinload
 from app.models.appointment_request import AppointmentRequest
 from app.models.client_profile import ClientProfile
 from app.models.enums import AppointmentStatus
+from app.models.request_image import RequestImage
 from app.repositories.base import BaseRepository
 
 
@@ -14,7 +15,9 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
         result = await self.session.execute(
             select(AppointmentRequest)
             .options(
-                selectinload(AppointmentRequest.images),
+                selectinload(AppointmentRequest.images).defer(
+                    RequestImage.content_bytes, raiseload=True
+                ),
                 selectinload(AppointmentRequest.client),
                 selectinload(AppointmentRequest.service),
                 selectinload(AppointmentRequest.slot),
@@ -28,7 +31,9 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
         result = await self.session.execute(
             select(AppointmentRequest)
             .options(
-                selectinload(AppointmentRequest.images),
+                selectinload(AppointmentRequest.images).defer(
+                    RequestImage.content_bytes, raiseload=True
+                ),
                 selectinload(AppointmentRequest.client),
                 selectinload(AppointmentRequest.service),
                 selectinload(AppointmentRequest.slot),
@@ -45,7 +50,9 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
         phone: str | None = None,
     ) -> list[AppointmentRequest]:
         statement = select(AppointmentRequest).options(
-            selectinload(AppointmentRequest.images),
+            selectinload(AppointmentRequest.images).defer(
+                RequestImage.content_bytes, raiseload=True
+            ),
             selectinload(AppointmentRequest.client),
             selectinload(AppointmentRequest.service),
             selectinload(AppointmentRequest.slot),
@@ -72,7 +79,9 @@ class AppointmentRequestRepository(BaseRepository[AppointmentRequest]):
             select(AppointmentRequest)
             .join(AppointmentRequest.client)
             .options(
-                selectinload(AppointmentRequest.images),
+                selectinload(AppointmentRequest.images).defer(
+                    RequestImage.content_bytes, raiseload=True
+                ),
                 selectinload(AppointmentRequest.client),
                 selectinload(AppointmentRequest.service),
                 selectinload(AppointmentRequest.slot),

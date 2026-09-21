@@ -57,6 +57,14 @@ type AtelierState = {
 
 const AtelierContext = createContext<AtelierState | undefined>(undefined);
 
+function sortAnnouncements(items: Announcement[]) {
+  return items.sort((left, right) =>
+    Number(right.isActive) - Number(left.isActive) ||
+    right.priority - left.priority ||
+    right.createdAt.localeCompare(left.createdAt)
+  );
+}
+
 export function AtelierProvider({ children }: PropsWithChildren) {
   const [requests, setRequests] = useState<AppointmentRequest[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -98,7 +106,6 @@ export function AtelierProvider({ children }: PropsWithChildren) {
         try {
           const created = await createRemoteRequest(request);
           setRequests((current) => [created, ...current.filter((item) => item.id !== created.id)]);
-          await refresh();
           return created;
         } catch (caughtError) {
           setError("Não foi possível confirmar a solicitação agora. Confira a conexão e tente novamente.");
@@ -108,15 +115,14 @@ export function AtelierProvider({ children }: PropsWithChildren) {
       createService: async (service) => {
         setError(undefined);
         const created = await createRemoteService(service);
-        setServices((current) => [created, ...current.filter((item) => item.id !== created.id)]);
-        await refresh();
+        setServices((current) => [created, ...current.filter((item) => item.id !== created.id)]
+          .sort((left, right) => Number(right.highlighted) - Number(left.highlighted) || left.name.localeCompare(right.name)));
         return created;
       },
       createAnnouncement: async (announcement) => {
         setError(undefined);
         const created = await createRemoteAnnouncement(announcement);
-        setAnnouncements((current) => [created, ...current.filter((item) => item.id !== created.id)]);
-        await refresh();
+        setAnnouncements((current) => sortAnnouncements([created, ...current.filter((item) => item.id !== created.id)]));
         return created;
       },
       addRequestComment: async (requestId, comment) => {
@@ -128,20 +134,17 @@ export function AtelierProvider({ children }: PropsWithChildren) {
         setError(undefined);
         await deactivateRemoteService(serviceId);
         setServices((current) => current.filter((service) => service.id !== serviceId));
-        await refresh();
       },
       deactivateAnnouncement: async (announcementId) => {
         setError(undefined);
         await deactivateRemoteAnnouncement(announcementId);
         setAnnouncements((current) => current.filter((announcement) => announcement.id !== announcementId));
-        await refresh();
       },
       refresh,
       rescheduleRequest: async (requestId, slotId, comment) => {
         setError(undefined);
         const updated = await rescheduleRemoteRequest(requestId, slotId, comment);
         setRequests((current) => current.map((request) => (request.id === requestId ? updated : request)));
-        await refresh();
       },
       toggleSlotBlock: async (slot) => {
         setError(undefined);
@@ -150,7 +153,6 @@ export function AtelierProvider({ children }: PropsWithChildren) {
         } else {
           await blockRemoteSlot(slot);
         }
-        await refresh();
       },
       updateRequestEstimate: async (requestId, estimatedPrice, comment) => {
         setError(undefined);
@@ -159,14 +161,13 @@ export function AtelierProvider({ children }: PropsWithChildren) {
       },
       updateRequestStatus: async (requestId, status, options) => {
         setError(undefined);
-        await updateRemoteRequestStatus(requestId, status, options);
-        await refresh();
+        const updated = await updateRemoteRequestStatus(requestId, status, options);
+        setRequests((current) => current.map((request) => (request.id === requestId ? updated : request)));
       },
       updateAnnouncement: async (announcement) => {
         setError(undefined);
         const updated = await updateRemoteAnnouncement(announcement);
-        setAnnouncements((current) => current.map((item) => (item.id === announcement.id ? updated : item)));
-        await refresh();
+        setAnnouncements((current) => sortAnnouncements(current.map((item) => (item.id === announcement.id ? updated : item))));
       },
       updateService: async (service) => {
         setError(undefined);
