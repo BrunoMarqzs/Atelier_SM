@@ -688,7 +688,7 @@ export async function updateAdminRequestStatus(
   requestId: number,
   status: AppointmentStatus,
   options?: { comment?: string; estimatedPrice?: number }
-): Promise<void> {
+): Promise<AppointmentRequest> {
   const response = await fetch(`${API_BASE_URL}/admin/requests/${requestId}/status`, {
     method: "PATCH",
     headers: adminHeaders({ "Content-Type": "application/json" }),
@@ -701,6 +701,7 @@ export async function updateAdminRequestStatus(
   if (!response.ok) {
     throw new Error(await apiErrorMessage(response, "Não foi possível atualizar o status do pedido."));
   }
+  return mapRequest((await response.json()) as BackendRequest);
 }
 
 export async function addAdminRequestComment(requestId: number, comment: string): Promise<AppointmentRequest> {
