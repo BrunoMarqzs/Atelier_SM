@@ -109,6 +109,29 @@ async def test_existing_utc_booking_is_not_inserted_again_and_partial_slots_are_
 
 
 @pytest.mark.asyncio
+async def test_browser_naive_window_matches_postgres_utc_slots_without_reinserting():
+    service = AvailabilityService(None)
+    service.repository = AsyncMock()
+    existing = [
+        AvailabilitySlot(
+            starts_at=datetime(2026, 9, 23, 11, minute, tzinfo=UTC),
+            ends_at=datetime(2026, 9, 23, 11, minute, tzinfo=UTC) + timedelta(minutes=30),
+            status=AvailabilityStatus.BOOKED if minute == 0 else AvailabilityStatus.BLOCKED,
+        )
+        for minute in (0, 30)
+    ]
+    service.repository.list_between.return_value = existing
+    # Same payload as toLocalDateTimeInput in the browser, no UTC offset.
+    await service.ensure_business_slots(datetime(2026, 9, 23, 8), datetime(2026, 9, 23, 9))
+    assert service.repository.add_many.call_args.args[0] == []
+    query_start, query_end = service.repository.list_between.call_args.args
+    assert query_start == datetime(2026, 9, 23, 11, tzinfo=UTC)
+    assert query_end == datetime(2026, 9, 23, 12, tzinfo=UTC)
+    assert existing[0].status == AvailabilityStatus.BOOKED
+    assert existing[1].status == AvailabilityStatus.BLOCKED
+
+
+@pytest.mark.asyncio
 async def test_concurrent_duplicate_still_reports_conflict_without_overwriting():
     service = AvailabilityService(None)
     service.repository = AsyncMock()

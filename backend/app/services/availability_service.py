@@ -9,6 +9,7 @@ from app.repositories.availability_repository import AvailabilityRepository
 from app.services.schedule_policy_service import SchedulePolicyService
 from app.utils.errors import ConflictError, NotFoundError
 from app.utils.schedule_rules import (
+    ATELIER_TIMEZONE,
     allowed_hours_for_date,
     is_allowed_slot_start,
     minute_of_day,
@@ -18,6 +19,13 @@ from app.utils.schedule_rules import (
 from app.validators.availability import AvailabilitySlotCreate, BlockSlotInput, ReleaseSlotInput
 
 SLOT_MINUTES = 30
+
+
+def normalize_agenda_datetime(value: datetime) -> datetime:
+    """Legacy browser payloads omit the offset but represent atelier wall time."""
+    if value.tzinfo is None:
+        return value.replace(tzinfo=ATELIER_TIMEZONE)
+    return to_atelier_datetime(value)
 
 
 class AvailabilityService:
@@ -42,6 +50,8 @@ class AvailabilityService:
         *,
         keep_booked_on_closed_days: bool,
     ) -> list[AvailabilitySlot]:
+        starts_at = normalize_agenda_datetime(starts_at)
+        ends_at = normalize_agenda_datetime(ends_at)
         allowed_minutes_by_date = await self.schedule_policy.allowed_hours_for_window(
             starts_at, ends_at
         )
@@ -69,6 +79,8 @@ class AvailabilityService:
         ends_at: datetime,
         allowed_minutes_by_date: dict[date, set[int]] | None = None,
     ) -> None:
+        starts_at = normalize_agenda_datetime(starts_at)
+        ends_at = normalize_agenda_datetime(ends_at)
         if allowed_minutes_by_date is None:
             allowed_minutes_by_date = await self.schedule_policy.allowed_hours_for_window(
                 starts_at, ends_at
@@ -77,7 +89,7 @@ class AvailabilityService:
         cursor = datetime.combine(local_start.date(), time(hour=0), tzinfo=local_start.tzinfo)
         end_day = to_atelier_datetime(ends_at).date()
         existing_windows = {
-            (to_atelier_datetime(slot.starts_at), to_atelier_datetime(slot.ends_at))
+            (normalize_agenda_datetime(slot.starts_at), normalize_agenda_datetime(slot.ends_at))
             for slot in await self.repository.list_between(starts_at, ends_at)
         }
         missing = []
