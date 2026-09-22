@@ -76,18 +76,27 @@ export async function createRemoteRequest(request: NewAppointmentRequest) {
     notes: request.notes
   });
 
-  if (!request.imageUrls.length) {
-    return createdRequest;
+  return createdRequest;
+}
+
+export type ImageUploadResult = { uri: string; url?: string; error?: string };
+
+export async function uploadRequestImages(
+  requestId: number,
+  uris: string[],
+  onProgress?: (completed: number, total: number) => void
+): Promise<ImageUploadResult[]> {
+  const results: ImageUploadResult[] = [];
+  // Sequential uploads limit memory/CPU pressure on mobile and small backend instances.
+  for (const uri of uris) {
+    try {
+      results.push({ uri, url: await uploadRequestImage(requestId, uri) });
+    } catch (error) {
+      results.push({ uri, error: error instanceof Error ? error.message : "Falha no envio da foto." });
+    }
+    onProgress?.(results.length, uris.length);
   }
-
-  const uploadedUrls = await Promise.all(
-    request.imageUrls.map((imageUri) => uploadRequestImage(createdRequest.id, imageUri))
-  );
-
-  return {
-    ...createdRequest,
-    imageUrls: uploadedUrls
-  };
+  return results;
 }
 
 export async function updateRemoteRequestStatus(
