@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -118,6 +118,43 @@ class SchedulePolicyService:
         )
         blocked_hours = set(normalize_hours(config.lunch_block_hours or DEFAULT_LUNCH_BLOCK_HOURS))
         return hours - blocked_hours
+
+    async def allowed_hours_for_window(
+        self, starts_at: datetime, ends_at: datetime
+    ) -> dict[date, set[int]]:
+        """Request-scoped rules snapshot; never reuse across mutations or requests."""
+        first = to_atelier_datetime(starts_at).date()
+        last = to_atelier_datetime(ends_at).date()
+        config = await self.get_config() if self.config_repository else None
+        exceptions = (
+            {
+                item.exception_date: item
+                for item in await self.exception_repository.list_between(first, last)
+            }
+            if self.exception_repository
+            else {}
+        )
+        result = {}
+        day = first
+        while day <= last:
+            exception = exceptions.get(day)
+            if exception:
+                hours = (
+                    set()
+                    if exception.kind == "closed"
+                    else set(normalize_hours(exception.hours or []))
+                )
+            elif config:
+                hours = set(
+                    normalize_hours(
+                        (config.weekly_hours or DEFAULT_WEEKLY_HOURS).get(str(day.weekday()), [])
+                    )
+                ) - set(normalize_hours(config.lunch_block_hours or DEFAULT_LUNCH_BLOCK_HOURS))
+            else:
+                hours = default_allowed_hours_for_date(datetime.combine(day, datetime.min.time()))
+            result[day] = hours
+            day += timedelta(days=1)
+        return result
 
     @staticmethod
     def default_config() -> ScheduleConfig:

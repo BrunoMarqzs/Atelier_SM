@@ -17,6 +17,15 @@ class ScheduleConfigRepository(BaseRepository[ScheduleConfig]):
 class ScheduleExceptionRepository(BaseRepository[ScheduleException]):
     model = ScheduleException
 
+    async def list_between(self, first: date, last: date) -> list[ScheduleException]:
+        result = await self.session.execute(
+            select(ScheduleException).where(
+                ScheduleException.exception_date >= first,
+                ScheduleException.exception_date <= last,
+            )
+        )
+        return list(result.scalars().all())
+
     async def get_by_date(self, exception_date: date) -> ScheduleException | None:
         result = await self.session.execute(
             select(ScheduleException).where(ScheduleException.exception_date == exception_date)

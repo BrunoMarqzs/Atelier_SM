@@ -269,14 +269,19 @@ async def test_ensure_business_slots_materializes_missing_hours() -> None:
     class FakeRepository:
         session = FakeSession()
 
-        async def find_exact_window(self, starts_at, _ends_at):
-            if starts_at.hour == 9:
-                return object()
-            return None
+        async def list_between(self, starts_at, _ends_at):
+            from app.models.availability_slot import AvailabilitySlot
 
-        async def add(self, slot):
-            created_slots.append(slot)
-            return slot
+            return [
+                AvailabilitySlot(
+                    starts_at=starts_at + timedelta(minutes=offset),
+                    ends_at=starts_at + timedelta(minutes=offset + 30),
+                )
+                for offset in (0, 30)
+            ]
+
+        async def add_many(self, slots):
+            created_slots.extend(slots)
 
     service = AvailabilityService(session=None)  # type: ignore[arg-type]
     service.repository = FakeRepository()
@@ -316,12 +321,8 @@ async def test_list_available_materializes_missing_half_hour_slots() -> None:
     class FakeRepository:
         session = FakeSession()
 
-        async def find_exact_window(self, _starts_at, _ends_at):
-            return None
-
-        async def add(self, slot):
-            created_slots.append(slot)
-            return slot
+        async def add_many(self, slots):
+            created_slots.extend(slots)
 
         async def list_between(self, _starts_at, _ends_at):
             return created_slots
@@ -358,6 +359,9 @@ async def test_closed_day_hides_preexisting_slots_from_public_but_keeps_bookings
             return [available, booked]
 
     class ClosedDayPolicy:
+        async def allowed_hours_for_window(self, starts_at, _ends_at):
+            return {starts_at.date(): set()}
+
         async def allowed_hours_for_date(self, _date_time):
             return set()
 
@@ -365,7 +369,7 @@ async def test_closed_day_hides_preexisting_slots_from_public_but_keeps_bookings
     service.repository = FakeRepository()
     service.schedule_policy = ClosedDayPolicy()
 
-    async def skip_materialization(_starts_at, _ends_at):
+    async def skip_materialization(_starts_at, _ends_at, _hours):
         return None
 
     service.ensure_business_slots = skip_materialization

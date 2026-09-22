@@ -42,9 +42,11 @@ class AvailabilityService:
         *,
         keep_booked_on_closed_days: bool,
     ) -> list[AvailabilitySlot]:
-        await self.ensure_business_slots(starts_at, ends_at)
+        allowed_minutes_by_date = await self.schedule_policy.allowed_hours_for_window(
+            starts_at, ends_at
+        )
+        await self.ensure_business_slots(starts_at, ends_at, allowed_minutes_by_date)
         slots = await self.repository.list_between(starts_at, ends_at)
-        allowed_minutes_by_date: dict[date, set[int]] = {}
         filtered_slots = []
         for slot in slots:
             atelier_start = to_atelier_datetime(slot.starts_at)
@@ -61,22 +63,36 @@ class AvailabilityService:
                 filtered_slots.append(slot)
         return sorted(filtered_slots, key=lambda slot: slot.starts_at)
 
-    async def ensure_business_slots(self, starts_at: datetime, ends_at: datetime) -> None:
-        cursor = datetime.combine(starts_at.date(), time(hour=0), tzinfo=starts_at.tzinfo)
-        end_day = ends_at.date()
+    async def ensure_business_slots(
+        self,
+        starts_at: datetime,
+        ends_at: datetime,
+        allowed_minutes_by_date: dict[date, set[int]] | None = None,
+    ) -> None:
+        if allowed_minutes_by_date is None:
+            allowed_minutes_by_date = await self.schedule_policy.allowed_hours_for_window(
+                starts_at, ends_at
+            )
+        local_start = to_atelier_datetime(starts_at)
+        cursor = datetime.combine(local_start.date(), time(hour=0), tzinfo=local_start.tzinfo)
+        end_day = to_atelier_datetime(ends_at).date()
+        existing_windows = {
+            (to_atelier_datetime(slot.starts_at), to_atelier_datetime(slot.ends_at))
+            for slot in await self.repository.list_between(starts_at, ends_at)
+        }
+        missing = []
 
         while cursor.date() <= end_day:
-            for slot_minute in await self.schedule_policy.allowed_hours_for_date(cursor):
+            for slot_minute in sorted(allowed_minutes_by_date.get(cursor.date(), set())):
                 hour, minute = slot_time_from_minutes(slot_minute)
                 slot_start = datetime.combine(
-                    cursor.date(), time(hour=hour, minute=minute), tzinfo=starts_at.tzinfo
+                    cursor.date(), time(hour=hour, minute=minute), tzinfo=local_start.tzinfo
                 )
                 slot_end = slot_start + timedelta(minutes=SLOT_MINUTES)
                 if slot_start < starts_at or slot_end > ends_at:
                     continue
-                existing = await self.repository.find_exact_window(slot_start, slot_end)
-                if not existing:
-                    await self.repository.add(
+                if (slot_start, slot_end) not in existing_windows:
+                    missing.append(
                         AvailabilitySlot(
                             starts_at=slot_start,
                             ends_at=slot_end,
@@ -86,7 +102,7 @@ class AvailabilityService:
             cursor += timedelta(days=1)
 
         try:
-            await self.repository.session.flush()
+            await self.repository.add_many(missing)
         except IntegrityError as exc:
             raise ConflictError("Horários já foram materializados por outra transação.") from exc
 

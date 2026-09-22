@@ -857,8 +857,10 @@ export async function uploadRequestImage(requestId: number, imageUri: string): P
   const type = extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : "image/jpeg";
 
   if (imageUri.startsWith("data:") || imageUri.startsWith("blob:")) {
-    const blob = await fetch(imageUri).then((response) => response.blob());
-    formData.append("file", blob, fileName);
+    const { prepareWebImage } = await import("@/utils/prepareWebImage");
+    const blob = await prepareWebImage(await fetch(imageUri).then((response) => response.blob()));
+    const suffix = blob.type === "image/png" ? "png" : blob.type === "image/webp" ? "webp" : "jpg";
+    formData.append("file", blob, `pedido-${requestId}.${suffix}`);
   } else {
     formData.append("file", {
       uri: imageUri,
@@ -872,7 +874,7 @@ export async function uploadRequestImage(requestId: number, imageUri: string): P
     body: formData
   });
   if (!response.ok) {
-    throw new Error("Não foi possível enviar a imagem.");
+    throw new Error(await apiErrorMessage(response, "Não foi possível enviar a imagem."));
   }
   const data = (await response.json()) as { url: string; thumbnail_url?: string | null };
   return normalizeImageUrl(data.thumbnail_url ?? data.url);
