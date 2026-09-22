@@ -10,6 +10,11 @@ from app.repositories.base import BaseRepository
 class AvailabilityRepository(BaseRepository[AvailabilitySlot]):
     model = AvailabilitySlot
 
+    async def add_many(self, slots: list[AvailabilitySlot]) -> None:
+        if slots:
+            self.session.add_all(slots)
+            await self.session.flush()
+
     async def get(self, slot_id: int) -> AvailabilitySlot | None:
         return await self.session.get(AvailabilitySlot, slot_id)
 

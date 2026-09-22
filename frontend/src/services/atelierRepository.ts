@@ -29,11 +29,12 @@ export type NewAppointmentRequest = Omit<AppointmentRequest, "id" | "status"> & 
 };
 
 export async function loadAtelierSnapshot() {
-  const [services, requests] = await Promise.all([
+  const isAdmin = hasAdminSession();
+  const [services, requests, announcements] = await Promise.all([
     fetchServices(),
-    hasAdminSession() ? fetchAdminRequests() : Promise.resolve([])
+    isAdmin ? fetchAdminRequests() : Promise.resolve([]),
+    isAdmin ? fetchAdminAnnouncements() : fetchAnnouncements()
   ]);
-  const announcements = hasAdminSession() ? await fetchAdminAnnouncements() : await fetchAnnouncements();
 
   return {
     announcements,
