@@ -1,10 +1,14 @@
+import asyncio
+from contextlib import asynccontextmanager, suppress
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config.settings import get_settings
-from app.routes import admin, auth, public
+from app.routes import admin, auth, public, push
+from app.services.push_service import configured, push_loop
 from app.utils.errors import DomainError
 from app.utils.logging import configure_logging
 
@@ -13,7 +17,19 @@ def create_app() -> FastAPI:
     configure_logging()
     settings = get_settings()
 
+    @asynccontextmanager
+    async def lifespan(app):
+        task = asyncio.create_task(push_loop()) if configured(settings) else None
+        try:
+            yield
+        finally:
+            if task:
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
+
     app = FastAPI(
+        lifespan=lifespan,
         title=settings.app_name,
         version="0.1.0",
         description="API profissional para agenda, serviços e pedidos do Atelier Sibele Marques.",
@@ -34,6 +50,7 @@ def create_app() -> FastAPI:
     app.include_router(public.router, prefix=settings.api_prefix)
     app.include_router(auth.router, prefix=settings.api_prefix)
     app.include_router(admin.router, prefix=settings.api_prefix)
+    app.include_router(push.router, prefix=settings.api_prefix)
     settings.local_upload_dir.mkdir(parents=True, exist_ok=True)
     app.mount(
         "/uploads",

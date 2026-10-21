@@ -1,4 +1,4 @@
-const CACHE_NAME = "atelier-sibele-v1";
+const CACHE_NAME = "atelier-sibele-v2";
 const CORE_ASSETS = [
   "/",
   "/manifest.webmanifest",
@@ -30,7 +30,7 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  if (url.pathname.startsWith("/api/")) {
+  if (url.origin !== self.location.origin || url.pathname.startsWith("/api/")) {
     event.respondWith(fetch(request));
     return;
   }
@@ -44,5 +44,30 @@ self.addEventListener("fetch", (event) => {
       })
       .catch(() => caches.match(request).then((cached) => cached || caches.match("/offline.html")))
   );
+});
+
+// Safari requires a visible notification for every push. Deduplicate at the server;
+// stable tags replace an existing notice rather than adding a duplicate card.
+let pushChain = Promise.resolve();
+self.addEventListener("push", (event) => {
+  pushChain = pushChain.catch(() => undefined).then(async () => {
+    let data;
+    try { data = event.data.json(); } catch { return; }
+    if (!Number.isSafeInteger(data.eventId) || data.eventId < 1) return;
+    await self.registration.showNotification("Ateliê — Novo pedido recebido", {
+      body: "Abra o painel para consultar os pedidos.",
+      icon: "/icons/icon-192.png",
+      tag: `atelier-request-${data.eventId}`,
+      renotify: false,
+      data: { url: "/admin" }
+    });
+  });
+  event.waitUntil(pushChain);
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  // Fixed login URL: never trust a payload-supplied destination.
+  event.waitUntil(self.clients.openWindow(new URL("/admin", self.location.origin).href));
 });
 

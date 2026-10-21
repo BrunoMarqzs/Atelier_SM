@@ -11,6 +11,7 @@ from app.models.enums import (
     StorageProvider,
 )
 from app.models.notification import Notification
+from app.models.push import PushDelivery, PushSubscription
 from app.models.refresh_token import RefreshToken
 from app.models.request_image import RequestImage
 from app.models.schedule_config import ScheduleConfig
@@ -28,6 +29,8 @@ __all__ = [
     "AvailabilityStatus",
     "ClientProfile",
     "Notification",
+    "PushDelivery",
+    "PushSubscription",
     "PriceType",
     "RequestImage",
     "RefreshToken",

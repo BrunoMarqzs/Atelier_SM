@@ -31,7 +31,7 @@ export function setupPwa() {
 
   document.title = "Atelier Sibele Marques";
   ensureLink("manifest", "/manifest.webmanifest");
-  ensureLink("apple-touch-icon", "/icons/icon-192.svg");
+  ensureLink("apple-touch-icon", "/icons/icon-192.png");
   ensureMeta("theme-color", "#FBF7F3");
   ensureMeta("apple-mobile-web-app-capable", "yes");
   ensureMeta("apple-mobile-web-app-title", "Atelier Sibele");
