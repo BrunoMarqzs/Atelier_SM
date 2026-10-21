@@ -15,6 +15,19 @@ import { formatSlotDateTime, formatSlotTime, slotKeyFromStart } from "@/utils/sc
 const API_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
 
+export async function adminPushApi<T>(path: string, payload?: unknown): Promise<T> {
+  const response = await fetch(`${API_BASE_URL}/admin/push/${path}`, {
+    method: payload === undefined ? "GET" : "POST",
+    headers: adminHeaders({ "Content-Type": "application/json" }),
+    body: payload === undefined ? undefined : JSON.stringify(payload),
+    signal: AbortSignal.timeout(20000)
+  });
+  if (!response.ok) {
+    throw new Error(await apiErrorMessage(response, "Não foi possível configurar os avisos. Entre novamente e tente outra vez."));
+  }
+  return response.json() as Promise<T>;
+}
+
 let accessToken: string | undefined;
 let refreshToken: string | undefined;
 

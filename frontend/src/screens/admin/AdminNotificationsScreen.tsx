@@ -9,6 +9,7 @@ import { PremiumButton } from "@/components/common/PremiumButton";
 import { PremiumSurface } from "@/components/common/PremiumSurface";
 import { Screen } from "@/components/common/Screen";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
+import { PushSettings } from "@/components/common/PushSettings";
 import { fetchAdminNotifications, markAdminNotificationRead } from "@/services/api";
 import { theme } from "@/theme";
 import type { NotificationItem } from "@/types/domain";
@@ -48,6 +49,7 @@ export function AdminNotificationsScreen() {
         subtitle={`${unreadCount} aviso(s) aguardando leitura.`}
         title="Notificações"
       />
+      <PushSettings />
       <PremiumButton icon="refresh-outline" label="Atualizar notificações" onPress={() => void loadNotifications()} variant="secondary" />
       {loading ? <LoadingState compact message="Buscando eventos recentes do atelier." title="Carregando avisos" /> : null}
       {error ? <Notice message={error} title="Notificações indisponíveis" tone="danger" /> : null}

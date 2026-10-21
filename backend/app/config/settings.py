@@ -29,6 +29,11 @@ class Settings(BaseSettings):
     max_upload_size_bytes: int = Field(default=8 * 1024 * 1024, ge=1024 * 1024)
     allowed_image_mime_types: str = "image/jpeg,image/png,image/webp"
     log_level: str = "INFO"
+    push_enabled: bool = False
+    push_admin_id: int | None = None
+    push_vapid_public_key: str = ""
+    push_vapid_private_key: str = ""
+    push_vapid_subject: str = ""
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 

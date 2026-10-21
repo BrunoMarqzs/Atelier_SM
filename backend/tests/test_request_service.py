@@ -48,6 +48,54 @@ class FakeNotificationService:
         self.notifications.append(kwargs)
 
 
+@pytest.mark.parametrize("photo_count", [0, 1, 3, 8])
+async def test_create_emits_one_internal_event_without_push_transport(photo_count, monkeypatch):
+    from app.services import push_service
+
+    def forbidden_transport(*args, **kwargs):
+        raise AssertionError("Booking must never call the push provider")
+
+    monkeypatch.setattr(push_service, "send_push", forbidden_transport)
+    service = build_service()
+
+    class Client:
+        async def get_or_create(self, _):
+            return SimpleNamespace(id=10, name="Cliente")
+
+    class Service:
+        async def get_required(self, _):
+            return SimpleNamespace(id=1, name="Consulta", is_active=True,
+                                   price_type="quote", fixed_price=None)
+
+    class Availability:
+        async def reserve_slot(self, _):
+            return SimpleNamespace(id=2, status=AvailabilityStatus.BOOKED)
+
+    class Repository:
+        async def get_by_public_code(self, _):
+            return None
+
+        async def add(self, request):
+            request.id = 123
+            return request
+
+    service.client_service = Client()
+    service.service_service = Service()
+    service.availability_service = Availability()
+    service.repository = Repository()
+    service.audit_service = FakeAuditService()
+    service.status_observer = FakeStatusObserver()
+    service.notification_service = FakeNotificationService()
+    request_payload = payload().model_copy(update={
+        "image_urls": [f"https://example.test/{i}.jpg" for i in range(photo_count)]
+    })
+    result = await service.create(request_payload)
+    assert result.id == 123
+    assert len(result.images) == photo_count
+    assert len(service.notification_service.notifications) == 1
+    assert service.notification_service.notifications[0]["event_type"] == "request_created"
+
+
 @pytest.mark.anyio
 async def test_create_rejects_inactive_service_before_reserving_slot() -> None:
     service = build_service()
