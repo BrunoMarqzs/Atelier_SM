@@ -108,7 +108,9 @@ export function AtelierProvider({ children }: PropsWithChildren) {
           setRequests((current) => [created, ...current.filter((item) => item.id !== created.id)]);
           return created;
         } catch (caughtError) {
-          setError("Não foi possível confirmar a solicitação agora. Confira a conexão e tente novamente.");
+          setError(caughtError instanceof Error && caughtError.name === "BookingSubmissionError"
+            ? caughtError.message
+            : "Não foi possível confirmar o registro. Confira seu histórico antes de tentar novamente.");
           throw caughtError;
         }
       },

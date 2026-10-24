@@ -103,10 +103,12 @@ export function RequestDetailsScreen({ navigation }: Props) {
       confirmedRef.current = request;
       setConfirmed(request);
       await sendImages(request, [...booking.imageUris]);
-    } catch {
+    } catch (error) {
       setSubmitError(confirmedRef.current
         ? "O pedido foi registrado, mas houve uma falha ao processar os anexos. Não crie outro pedido."
-        : "Não foi possível confirmar o registro. Confira seu histórico antes de tentar novamente.");
+        : error instanceof Error && error.name === "BookingSubmissionError"
+          ? error.message
+          : "Não conseguimos obter a confirmação do pedido. Ele pode ter sido salvo. Confira seu histórico antes de tentar novamente; se não aparecer, verifique sua conexão.");
     } finally {
       busy.current = false;
       setSubmitting(false);

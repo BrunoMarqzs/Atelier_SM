@@ -424,6 +424,32 @@ export async function fetchAdminAvailability(startsAt: string, endsAt: string): 
   return data.map(mapSlot);
 }
 
+// Only explicitly recognized business messages may be shown to clients.
+async function bookingRejection(response: Response): Promise<Error> {
+  let detail: unknown;
+  try { detail = ((await response.json()) as { detail?: unknown }).detail; } catch { /* Non-JSON proxy response. */ }
+  const safeMessages: Record<string, string> = {
+    "Serviço com preço fixo está sem valor configurado.": "Este serviço está com uma configuração de preço pendente. Entre em contato com o ateliê para solicitar o agendamento.",
+    "Serviço indisponível para agendamento.": "Este serviço não está disponível para agendamento. Volte e escolha outro serviço.",
+    "Horário indisponível.": "Esse horário não está mais disponível. Volte à agenda e escolha outro horário.",
+    "Horário já reservado por outra solicitação.": "Esse horário já foi reservado. Confira seu histórico; se não houver um pedido seu, escolha outro horário.",
+    "Horário fora da disponibilidade do atelier.": "Esse horário está fora da disponibilidade do ateliê. Volte à agenda e escolha outro horário.",
+    "Horário não encontrado.": "Esse horário não está mais disponível. Atualize a agenda e escolha outro horário."
+  };
+  const known = typeof detail === "string" && Object.prototype.hasOwnProperty.call(safeMessages, detail)
+    ? safeMessages[detail] : undefined;
+  const message = response.status >= 500 || response.status === 408
+    ? "O servidor não conseguiu confirmar o registro. O pedido pode ter sido salvo. Confira seu histórico antes de tentar novamente."
+    : known ?? (response.status === 422
+      ? "Confira nome, telefone e observações do pedido. Há dados inválidos ou incompletos."
+      : response.status === 429
+        ? "Houve muitas tentativas em pouco tempo. Aguarde alguns instantes e confira seu histórico antes de tentar novamente."
+        : "O servidor não aceitou a solicitação. Confira os dados e a disponibilidade; se persistir, entre em contato com o ateliê.");
+  const error = new Error(message);
+  error.name = "BookingSubmissionError";
+  return error;
+}
+
 export async function submitAppointmentRequest(payload: {
   client: { name: string; phone: string };
   serviceId: number;
@@ -446,7 +472,7 @@ export async function submitAppointmentRequest(payload: {
   });
 
   if (!response.ok) {
-    throw new Error("Não foi possível confirmar a solicitação.");
+    throw await bookingRejection(response);
   }
 
   const data = (await response.json()) as {
