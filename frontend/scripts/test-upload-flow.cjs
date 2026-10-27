@@ -106,7 +106,7 @@ async function screenFlow() {
     if (name === '@/theme') return { theme: { spacing: {}, typography: {}, colors: {} } };
     if (name === '@/context/BookingContext') return { useBooking: () => ({
       client: { name: 'Test', phone: '000000000' }, service: { id: 1 }, slot: { id: 1 },
-      imageUris: ['good', 'bad']
+      imageUris: ['good', 'bad'], setNotes: value => assert.equal(value, '')
     }) };
     if (name === '@/context/AtelierContext') return { useAtelier: () => ({ addRequest: async () => {
       creates++; await Promise.resolve(); return { id: 42, publicCode: 'TEST' };

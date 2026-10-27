@@ -102,6 +102,7 @@ export function RequestDetailsScreen({ navigation }: Props) {
       });
       confirmedRef.current = request;
       setConfirmed(request);
+      booking.setNotes("");
       await sendImages(request, [...booking.imageUris]);
     } catch (error) {
       setSubmitError(confirmedRef.current
@@ -155,6 +156,7 @@ export function RequestDetailsScreen({ navigation }: Props) {
         textAlignVertical="top"
         value={booking.notes}
       />
+      <Text style={styles.summaryText}>As observações ficam temporariamente nesta aba por até 2 horas. Em aparelho compartilhado, limpe o texto ao sair. Após recarregar, escolha novamente serviço, horário e fotos.</Text>
       {confirmed ? <Notice tone="success" title="Pedido registrado"
         message={`Pedido ${confirmed.publicCode ?? `#${confirmed.id}`} salvo. Uma falha nas fotos não cancela o pedido. ${progress}`} /> : null}
       {uploads.some(item => !item.url) ? <Notice tone="info" title="Algumas fotos não foram enviadas"

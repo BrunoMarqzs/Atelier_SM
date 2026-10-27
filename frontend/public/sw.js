@@ -1,4 +1,4 @@
-const CACHE_NAME = "atelier-sibele-v2";
+const CACHE_NAME = "atelier-sibele-v3";
 const CORE_ASSETS = [
   "/",
   "/manifest.webmanifest",
@@ -38,11 +38,18 @@ self.addEventListener("fetch", (event) => {
   event.respondWith(
     fetch(request)
       .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(request, copy));
+        // Cache only public static resources. Never persist page or account data.
+        if (response.ok && response.type === "basic" && request.mode !== "navigate" &&
+            ["script", "style", "image", "font"].includes(request.destination)) {
+          const copy = response.clone();
+          event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.put(request, copy)).catch(() => undefined));
+        }
         return response;
       })
-      .catch(() => caches.match(request).then((cached) => cached || caches.match("/offline.html")))
+      .catch(async () => {
+        if (request.mode === "navigate") return (await caches.match("/offline.html")) || Response.error();
+        return (await caches.match(request)) || Response.error();
+      })
   );
 });
 

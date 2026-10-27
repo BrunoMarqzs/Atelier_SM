@@ -73,6 +73,9 @@ export function HomeScreen({ navigation }: HomeProps) {
                 <Text style={styles.heroChip}>Ajustes finos</Text>
                 <Text style={styles.heroChip}>Sob avaliação</Text>
               </View>
+              <Text style={styles.address}>
+                Rua Matarazzo, 119 — Santa Filomena{"\n"}Curvelo — MG
+              </Text>
             </View>
           </LinearGradient>
         </ImageBackground>
@@ -188,6 +191,11 @@ const styles = StyleSheet.create({
     color: theme.colors.ivory,
     marginTop: theme.spacing.md,
     maxWidth: 520
+  },
+  address: {
+    ...theme.typography.body,
+    color: theme.colors.ivory,
+    marginTop: theme.spacing.md
   },
   heroChips: {
     flexDirection: "row",

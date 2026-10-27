@@ -12,6 +12,7 @@ import { Screen } from "@/components/common/Screen";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { useAtelier } from "@/context/AtelierContext";
 import { loginAdmin } from "@/services/api";
+import { friendlyErrorMessage } from "@/utils/errors";
 import { theme } from "@/theme";
 import type { PublicStackParamList, RootStackParamList } from "@/types/navigation";
 
@@ -34,8 +35,8 @@ export function AdminLoginScreen({ navigation }: Props) {
       await loginAdmin({ email, password });
       await atelier.refresh();
       navigation.getParent()?.navigate("Admin", { screen: "AdminDashboard" });
-    } catch {
-      setError("Não foi possível acessar. Confira e-mail e senha.");
+    } catch (error) {
+      setError(friendlyErrorMessage(error, "Não foi possível acessar o painel agora."));
     } finally {
       setLoading(false);
     }

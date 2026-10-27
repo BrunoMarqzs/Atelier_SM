@@ -9,7 +9,7 @@ const code = ts.transpileModule(fs.readFileSync(path.join(__dirname, '../src/ser
 let response, calls = 0;
 const exportsObject = {};
 vm.runInNewContext(code, {
-  exports: exportsObject, process: { env: {} }, Error,
+  exports: exportsObject, process: { env: {} }, Error, URLSearchParams,
   require: () => ({}),
   fetch: async () => { calls++; if (response instanceof Error) throw response; return response; }
 });
@@ -26,6 +26,15 @@ async function rejection(status, detail, expected, malformed = false) {
   assert.equal(calls, before + 1, 'Never automatically repeat a POST');
 }
 (async () => {
+  const login = { email: 'test@example.com', password: 'test' };
+  for (const [status, expected] of [[401, /senha inválidos/], [429, /muitas tentativas/], [503, /servidor está indisponível/]]) {
+    response = { ok: false, status, json: async () => ({ detail: 'SECRET' }) };
+    await assert.rejects(exportsObject.loginAdmin(login), expected);
+  }
+  response = { ok: false, status: 503 };
+  await assert.rejects(exportsObject.fetchServices(), /servidor está indisponível/);
+  response = { ok: false, status: 422 };
+  await assert.rejects(exportsObject.fetchAvailability('start', 'end'), /dados inválidos/);
   await rejection(400, 'Serviço com preço fixo está sem valor configurado.', /configuração de preço pendente/);
   await rejection(409, 'Horário indisponível.', /escolha outro horário/);
   await rejection(409, 'Horário já reservado por outra solicitação.', /histórico/);
@@ -41,5 +50,5 @@ async function rejection(status, detail, expected, malformed = false) {
   await assert.rejects(exportsObject.submitAppointmentRequest(payload), /invalid JSON/);
   response = { ok: true, json: async () => ({ id: 42, status: 'pending', public_code: 'TEST' }) };
   assert.equal((await exportsObject.submitAppointmentRequest(payload)).id, 42);
-  console.log('Booking errors: 12 scenarios passed; no automatic retry, no raw server detail exposed.');
+  console.log('API errors: login, services, agenda and 12 booking scenarios passed; no automatic retry or raw server detail.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

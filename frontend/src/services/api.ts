@@ -167,27 +167,12 @@ function adminHeaders(extra?: Record<string, string>) {
 }
 
 async function apiErrorMessage(response: Response, fallback: string) {
-  try {
-    const data = (await response.json()) as { detail?: unknown };
-    if (typeof data.detail === "string") {
-      return data.detail;
-    }
-    if (Array.isArray(data.detail)) {
-      const messages = data.detail
-        .map((item) => {
-          if (item && typeof item === "object" && "msg" in item) {
-            return String(item.msg);
-          }
-          return undefined;
-        })
-        .filter(Boolean);
-      if (messages.length) {
-        return messages.join(" ");
-      }
-    }
-  } catch {
-    return fallback;
-  }
+  if (response.status === 401) return "Sua sessão expirou. Entre novamente no painel.";
+  if (response.status === 403) return "Sua conta não tem permissão para esta ação.";
+  if (response.status === 429) return "Houve muitas tentativas. Aguarde alguns instantes antes de tentar novamente.";
+  if (response.status >= 500) return "O servidor está indisponível no momento. Aguarde alguns instantes; se você estava salvando, confira o resultado antes de repetir.";
+  if (response.status === 422) return "Há dados inválidos ou incompletos. Confira os campos preenchidos.";
+  // Unknown backend details can contain internal information.
   return fallback;
 }
 
@@ -348,7 +333,7 @@ export async function loginAdmin(payload: { email: string; password: string }) {
     body: JSON.stringify(payload)
   });
   if (!response.ok) {
-    throw new Error("E-mail ou senha inválidos.");
+    throw new Error(response.status === 401 ? "E-mail ou senha inválidos." : await apiErrorMessage(response, "Não foi possível entrar no painel. Tente novamente em alguns instantes."));
   }
   setSession((await response.json()) as AuthResponse);
 }
@@ -387,7 +372,7 @@ export async function logoutAdmin() {
 export async function fetchServices(): Promise<Service[]> {
   const response = await fetch(`${API_BASE_URL}/services`);
   if (!response.ok) {
-    throw new Error("Não foi possível carregar os serviços.");
+    throw new Error(await apiErrorMessage(response, "Não foi possível carregar os serviços."));
   }
   const data = (await response.json()) as BackendService[];
   return data.map(mapService);
@@ -406,7 +391,7 @@ export async function fetchAvailability(startsAt: string, endsAt: string): Promi
   const params = new URLSearchParams({ starts_at: startsAt, ends_at: endsAt });
   const response = await fetch(`${API_BASE_URL}/availability?${params.toString()}`);
   if (!response.ok) {
-    throw new Error("Não foi possível carregar a agenda.");
+    throw new Error(await apiErrorMessage(response, "Não foi possível carregar a agenda."));
   }
   const data = (await response.json()) as BackendSlot[];
   return data.map(mapSlot);
@@ -820,7 +805,7 @@ export async function createAdminService(service: Omit<Service, "id">): Promise<
     })
   });
   if (!response.ok) {
-    throw new Error("Não foi possível criar o serviço.");
+    throw new Error(await apiErrorMessage(response, "Não foi possível criar o serviço."));
   }
   return mapService((await response.json()) as BackendService);
 }
@@ -841,7 +826,7 @@ export async function updateAdminService(service: Service): Promise<Service> {
     })
   });
   if (!response.ok) {
-    throw new Error("Não foi possível atualizar o serviço.");
+    throw new Error(await apiErrorMessage(response, "Não foi possível atualizar o serviço."));
   }
   return mapService((await response.json()) as BackendService);
 }
@@ -852,7 +837,7 @@ export async function deactivateAdminService(serviceId: number): Promise<void> {
     headers: adminHeaders()
   });
   if (!response.ok) {
-    throw new Error("Não foi possível remover o serviço.");
+    throw new Error(await apiErrorMessage(response, "Não foi possível remover o serviço."));
   }
 }
 

@@ -1,6 +1,7 @@
 import { createContext, type PropsWithChildren, useContext, useMemo, useState } from "react";
 
 import type { ClientIdentity, Service, TimeSlot } from "@/types/domain";
+import { readBookingDraft, saveBookingDraft } from "@/utils/bookingDraft";
 
 type BookingState = {
   client?: ClientIdentity;
@@ -23,7 +24,11 @@ export function BookingProvider({ children }: PropsWithChildren) {
   const [client, setClient] = useState<ClientIdentity>();
   const [service, setService] = useState<Service>();
   const [slot, setSlot] = useState<TimeSlot>();
-  const [notes, setNotes] = useState("");
+  const [notes, updateNotes] = useState(() => readBookingDraft()?.notes ?? "");
+  function setNotes(value: string) {
+    updateNotes(value);
+    saveBookingDraft(value);
+  }
   const [imageUris, setImageUris] = useState<string[]>([]);
 
   const value = useMemo<BookingState>(
