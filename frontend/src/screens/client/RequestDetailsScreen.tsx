@@ -102,11 +102,14 @@ export function RequestDetailsScreen({ navigation }: Props) {
       });
       confirmedRef.current = request;
       setConfirmed(request);
+      booking.setNotes("");
       await sendImages(request, [...booking.imageUris]);
-    } catch {
+    } catch (error) {
       setSubmitError(confirmedRef.current
         ? "O pedido foi registrado, mas houve uma falha ao processar os anexos. Não crie outro pedido."
-        : "Não foi possível confirmar o registro. Confira seu histórico antes de tentar novamente.");
+        : error instanceof Error && error.name === "BookingSubmissionError"
+          ? error.message
+          : "Não conseguimos obter a confirmação do pedido. Ele pode ter sido salvo. Confira seu histórico antes de tentar novamente; se não aparecer, verifique sua conexão.");
     } finally {
       busy.current = false;
       setSubmitting(false);
@@ -153,6 +156,7 @@ export function RequestDetailsScreen({ navigation }: Props) {
         textAlignVertical="top"
         value={booking.notes}
       />
+      <Text style={styles.summaryText}>As observações ficam temporariamente nesta aba por até 2 horas. Em aparelho compartilhado, limpe o texto ao sair. Após recarregar, escolha novamente serviço, horário e fotos.</Text>
       {confirmed ? <Notice tone="success" title="Pedido registrado"
         message={`Pedido ${confirmed.publicCode ?? `#${confirmed.id}`} salvo. Uma falha nas fotos não cancela o pedido. ${progress}`} /> : null}
       {uploads.some(item => !item.url) ? <Notice tone="info" title="Algumas fotos não foram enviadas"

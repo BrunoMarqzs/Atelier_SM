@@ -14,6 +14,7 @@ import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { useAtelier } from "@/context/AtelierContext";
 import { useBooking } from "@/context/BookingContext";
 import { fetchAvailability } from "@/services/api";
+import { friendlyErrorMessage } from "@/utils/errors";
 import { theme } from "@/theme";
 import type { TimeSlot } from "@/types/domain";
 import type { ClientStackParamList } from "@/types/navigation";
@@ -79,9 +80,9 @@ export function ScheduleScreen({ navigation }: Props) {
       .then((loadedSlots) => {
         setRemoteSlots(loadedSlots);
       })
-      .catch(() => {
+      .catch((error) => {
         setRemoteSlots([]);
-        setAgendaError("Não foi possível conectar à agenda agora. Tente novamente em alguns instantes.");
+        setAgendaError(friendlyErrorMessage(error, "Não foi possível carregar a agenda agora."));
       })
       .finally(() => {
         setLoadingSlots(false);

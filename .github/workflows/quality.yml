@@ -52,3 +52,12 @@ jobs:
 
       - name: Typecheck frontend
         run: npm run quality
+
+      - name: Frontend regression tests
+        run: |
+          for script in scripts/test-*.cjs; do node "$script"; done
+
+      - name: Build web and check deployment assets
+        run: |
+          npm run build
+          npm run predeploy:smoke

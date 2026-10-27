@@ -12,6 +12,7 @@ import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { useAtelier } from "@/context/AtelierContext";
 import { theme } from "@/theme";
 import type { PriceType, Service } from "@/types/domain";
+import { friendlyErrorMessage } from "@/utils/errors";
 
 export function AdminServicesScreen() {
   const { createService, deactivateService, services, updateService } = useAtelier();
@@ -34,8 +35,8 @@ export function AdminServicesScreen() {
     try {
       await updateService(editingService);
       setEditingService(undefined);
-    } catch {
-      setServiceError("Não foi possível salvar o serviço agora. Confira a conexão e tente novamente.");
+    } catch (error) {
+      setServiceError(friendlyErrorMessage(error, "Não foi possível salvar o serviço agora."));
     } finally {
       setSaving(false);
     }
@@ -54,8 +55,8 @@ export function AdminServicesScreen() {
         highlighted: false
       });
       setEditingService(created);
-    } catch {
-      setServiceError("Não foi possível criar o serviço agora. Confira a conexão e tente novamente.");
+    } catch (error) {
+      setServiceError(friendlyErrorMessage(error, "Não foi possível criar o serviço agora."));
     } finally {
       setSaving(false);
     }
@@ -66,8 +67,8 @@ export function AdminServicesScreen() {
     setServiceError(undefined);
     try {
       await deactivateService(serviceId);
-    } catch {
-      setServiceError("Não foi possível remover o serviço.");
+    } catch (error) {
+      setServiceError(friendlyErrorMessage(error, "Não foi possível remover o serviço."));
     } finally {
       setSaving(false);
     }
