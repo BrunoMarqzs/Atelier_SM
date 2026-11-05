@@ -40,7 +40,7 @@ const screen = load('screens/admin/AdminRequestsScreen.tsx', name => {
   if (name === '@/hooks/useResponsiveLayout') return { useResponsiveLayout: () => ({ isNarrow: false }) };
   if (name === '@/utils/adminRequestList') return helpers;
   if (name === '@/utils/errors') return { friendlyErrorMessage: (_e, fallback) => fallback };
-  if (name === '@/theme') return { theme: { spacing: {}, colors: {}, radius: {}, typography: {}, shadows: {} } };
+  if (name === '@/theme') return { theme: { spacing: { sm: 12 }, colors: {}, radius: {}, typography: {}, shadows: {} } };
   const component = name.split('/').at(-1);
   return { [component]: component, Ionicons: 'Ionicons' };
 });
@@ -53,6 +53,14 @@ function nodes(tree, predicate) {
 function button(tree, label) { return nodes(tree, x => x.props?.label === label)[0]; }
 (async () => {
   let tree = render();
+  for (const [width, columns] of [[320, 1], [390, 1], [520, 2], [760, 3]]) {
+    nodes(tree, x => typeof x.props?.onLayout === 'function')[0].props.onLayout({ nativeEvent: { layout: { width } } });
+    tree = render();
+    const widths = nodes(tree, x => typeof x.props?.style?.width === 'number').map(x => x.props.style.width);
+    assert.ok(widths.length > 0);
+    for (const actual of widths) assert.equal(actual, (width - 12 * (columns - 1)) / columns);
+    assert.ok(widths.every(actual => actual >= 240), 'Cards must not collapse to narrow text columns');
+  }
   nodes(tree, x => x.props?.accessibilityLabel?.includes('2026-11-04-08:00'))[0].props.onPress();
   tree = render();
   assert.ok(button(tree, 'Confirmar pedido'));
