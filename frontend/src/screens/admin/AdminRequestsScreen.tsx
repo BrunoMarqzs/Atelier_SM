@@ -16,7 +16,6 @@ import { Screen } from "@/components/common/Screen";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useAtelier } from "@/context/AtelierContext";
-import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { theme } from "@/theme";
 import type { AppointmentRequest, AppointmentStatus } from "@/types/domain";
 import { groupAdminRequests, visibleInRequestTab } from "@/utils/adminRequestList";
@@ -64,7 +63,9 @@ function actionLabel(status: AppointmentStatus) {
 }
 
 export function AdminRequestsScreen() {
-  const { isNarrow } = useResponsiveLayout();
+  const [gridWidth, setGridWidth] = useState(0);
+  const columns = gridWidth >= 640 ? 3 : gridWidth >= 420 ? 2 : 1;
+  const cardWidth = gridWidth > 0 ? (gridWidth - theme.spacing.sm * (columns - 1)) / columns : undefined;
   const { addRequestComment, requests, rescheduleRequest, services, updateRequestEstimate, updateRequestStatus } = useAtelier();
   const [selectedRequest, setSelectedRequest] = useState<AppointmentRequest | undefined>();
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | undefined>();
@@ -369,11 +370,12 @@ export function AdminRequestsScreen() {
           requestGroups.map((group) => (
             <View key={group.key} style={styles.dateGroup}>
               <Text style={styles.dateHeading}>{group.label}</Text>
-              <View style={styles.cardGrid}>
+              <View style={styles.cardGrid} onLayout={(event) => setGridWidth(event.nativeEvent.layout.width)}>
               {group.requests.map((request) => (
+              <View key={request.id} style={{ width: cardWidth ?? "100%" }}>
               <AnimatedPressable
                 key={request.id}
-                style={[styles.requestCard, isNarrow ? styles.narrowCard : styles.wideCard]}
+                style={styles.requestCard}
                 accessibilityLabel={`Abrir pedido de ${request.clientName}, ${request.slotLabel}, ${request.serviceName}`}
                 accessibilityRole="button"
                 onPress={() => {
@@ -394,6 +396,7 @@ export function AdminRequestsScreen() {
                 <Text style={styles.cardService}>{request.serviceName}</Text>
                 <Text style={styles.cardLink}>#{request.id} · Ver pedido ↗</Text>
               </AnimatedPressable>
+              </View>
               ))}
               </View>
             </View>
@@ -605,11 +608,9 @@ export function AdminRequestsScreen() {
 
 const styles = StyleSheet.create({
   dateGroup: { gap: theme.spacing.sm },
-  narrowCard: { flexBasis: "46%", maxWidth: "48%" },
-  wideCard: { flexBasis: "30%", maxWidth: "32%" },
   dateHeading: { ...theme.typography.caption, color: theme.colors.graphite, fontWeight: "700", marginTop: theme.spacing.md },
   cardGrid: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm },
-  requestCard: { flexGrow: 1, flexBasis: 210, maxWidth: "100%", minHeight: 190, padding: theme.spacing.md, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.ivoryGlass, gap: theme.spacing.sm, ...theme.shadows.soft },
+  requestCard: { width: "100%", minHeight: 190, padding: theme.spacing.md, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.ivoryGlass, gap: theme.spacing.sm, ...theme.shadows.soft },
   cardTop: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: theme.spacing.xs },
   cardTime: { fontSize: 27, fontWeight: "700", color: theme.colors.ink },
   cardName: { ...theme.typography.section, color: theme.colors.ink },
