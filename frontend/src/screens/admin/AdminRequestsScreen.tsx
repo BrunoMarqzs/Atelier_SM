@@ -1,10 +1,8 @@
 import { useMemo, useState } from "react";
-import { Alert, Platform, StyleSheet, Text, View } from "react-native";
+import { Alert, Modal, Platform, ScrollView, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 import { AnimatedPressable } from "@/animations/AnimatedPressable";
-import { FadeInView } from "@/animations/FadeInView";
-import { RequestPreviewCard } from "@/components/admin/RequestPreviewCard";
 import { WhatsAppNotifyButton } from "@/components/admin/WhatsAppNotifyButton";
 import { ReschedulePanel } from "@/components/booking/ReschedulePanel";
 import { EmptyState } from "@/components/common/EmptyState";
@@ -18,9 +16,10 @@ import { Screen } from "@/components/common/Screen";
 import { ScreenHeader } from "@/components/common/ScreenHeader";
 import { StatusBadge } from "@/components/common/StatusBadge";
 import { useAtelier } from "@/context/AtelierContext";
+import { useResponsiveLayout } from "@/hooks/useResponsiveLayout";
 import { theme } from "@/theme";
 import type { AppointmentRequest, AppointmentStatus } from "@/types/domain";
-import { sortRequestsBySchedule } from "@/utils/calendar";
+import { groupAdminRequests, visibleInRequestTab } from "@/utils/adminRequestList";
 import { friendlyErrorMessage } from "@/utils/errors";
 
 const statusFilters: Array<{ label: string; value?: AppointmentStatus }> = [
@@ -28,8 +27,11 @@ const statusFilters: Array<{ label: string; value?: AppointmentStatus }> = [
   { label: "Pendentes", value: "pending" },
   { label: "Avaliação", value: "under_review" },
   { label: "Orçados", value: "quote_sent" },
-  { label: "Aprovados", value: "approved" },
-  { label: "Andamento", value: "in_progress" }
+  { label: "Confirmados", value: "approved" },
+  { label: "Andamento", value: "in_progress" },
+  { label: "Concluídos", value: "completed" },
+  { label: "Recusados", value: "rejected" },
+  { label: "Cancelados", value: "cancelled" }
 ];
 
 const allowedStatusTransitions: Record<AppointmentStatus, AppointmentStatus[]> = {
@@ -62,6 +64,7 @@ function actionLabel(status: AppointmentStatus) {
 }
 
 export function AdminRequestsScreen() {
+  const { isNarrow } = useResponsiveLayout();
   const { addRequestComment, requests, rescheduleRequest, services, updateRequestEstimate, updateRequestStatus } = useAtelier();
   const [selectedRequest, setSelectedRequest] = useState<AppointmentRequest | undefined>();
   const [statusFilter, setStatusFilter] = useState<AppointmentStatus | undefined>();
@@ -76,6 +79,7 @@ export function AdminRequestsScreen() {
   const [actionError, setActionError] = useState<string>();
   const [actionSuccess, setActionSuccess] = useState<string>();
   const [actionLoading, setActionLoading] = useState(false);
+  const [rescheduleOpen, setRescheduleOpen] = useState(false);
   const activeRequests = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     const now = new Date();
@@ -88,9 +92,8 @@ export function AdminRequestsScreen() {
     const endOfMonth = new Date(endOfToday);
     endOfMonth.setMonth(endOfMonth.getMonth() + 1);
 
-    return sortRequestsBySchedule(requests)
-      .filter((request) => request.status !== "completed")
-      .filter((request) => (statusFilter ? request.status === statusFilter : true))
+    return requests
+      .filter((request) => visibleInRequestTab(request, statusFilter))
       .filter((request) => (serviceFilter ? request.serviceName === serviceFilter : true))
       .filter((request) => {
         if (budgetFilter === "with_budget") {
@@ -138,9 +141,8 @@ export function AdminRequestsScreen() {
         );
       });
   }, [budgetFilter, onlyRescheduled, onlyWithImage, periodFilter, query, requests, serviceFilter, statusFilter]);
-  const freshSelectedRequest = requests.find(
-    (request) => request.id === selectedRequest?.id && request.status !== "completed"
-  );
+  const requestGroups = useMemo(() => groupAdminRequests(activeRequests), [activeRequests]);
+  const freshSelectedRequest = requests.find((request) => request.id === selectedRequest?.id);
   const canCompleteSelectedRequest =
     freshSelectedRequest?.status === "approved" || freshSelectedRequest?.status === "in_progress";
 
@@ -230,7 +232,7 @@ export function AdminRequestsScreen() {
       <ScreenHeader subtitle="Filtre, avalie, comente, aprove e acompanhe cada solicitação." title="Pedidos" />
       <PremiumSurface style={styles.filters}>
         <View style={styles.filterHeader}>
-          <Text style={styles.filterTitle}>{activeRequests.length} pedido(s) na fila</Text>
+          <Text style={styles.filterTitle}>{activeRequests.length} pedido(s) {statusFilter === "completed" ? "concluído(s)" : "na lista"}</Text>
           <Text style={styles.filterSubtitle}>Busca e status para avaliação rápida</Text>
         </View>
         <ElegantInput
@@ -364,21 +366,37 @@ export function AdminRequestsScreen() {
 
       <View style={styles.list}>
         {activeRequests.length > 0 ? (
-          activeRequests.map((request, index) => (
-            <FadeInView delay={index * 45} key={request.id}>
+          requestGroups.map((group) => (
+            <View key={group.key} style={styles.dateGroup}>
+              <Text style={styles.dateHeading}>{group.label}</Text>
+              <View style={styles.cardGrid}>
+              {group.requests.map((request) => (
               <AnimatedPressable
-                accessibilityLabel={`Abrir pedido de ${request.clientName}, ${request.serviceName}`}
+                key={request.id}
+                style={[styles.requestCard, isNarrow ? styles.narrowCard : styles.wideCard]}
+                accessibilityLabel={`Abrir pedido de ${request.clientName}, ${request.slotLabel}, ${request.serviceName}`}
                 accessibilityRole="button"
                 onPress={() => {
                   setSelectedRequest(request);
+                  setRescheduleOpen(false);
+                  setActionError(undefined);
+                  setActionSuccess(undefined);
                   setComment(request.adminComment ?? "");
                   setEstimate(request.estimatedPrice ? String(request.estimatedPrice) : "");
                 }}
                 pressedScale={0.988}
               >
-                <RequestPreviewCard request={request} />
+                <View style={styles.cardTop}>
+                  <Text style={styles.cardTime}>{request.slotKey.match(/-(\d{2}:\d{2})$/)?.[1] ?? request.slotLabel}</Text>
+                  <StatusBadge status={request.status} />
+                </View>
+                <Text style={styles.cardName}>{request.clientName}</Text>
+                <Text style={styles.cardService}>{request.serviceName}</Text>
+                <Text style={styles.cardLink}>#{request.id} · Ver pedido ↗</Text>
               </AnimatedPressable>
-            </FadeInView>
+              ))}
+              </View>
+            </View>
           ))
         ) : (
           <EmptyState
@@ -390,7 +408,13 @@ export function AdminRequestsScreen() {
       </View>
 
       {freshSelectedRequest ? (
+        <Modal transparent animationType="fade" visible onRequestClose={() => { if (!actionLoading) setSelectedRequest(undefined); }}>
+        <View style={styles.modalOverlay}>
+        <ScrollView contentContainerStyle={styles.modalScroll}>
         <PremiumSurface elevated style={styles.detailPanel}>
+          <PremiumButton label="Fechar detalhes" variant="secondary" disabled={actionLoading} onPress={() => setSelectedRequest(undefined)} />
+          {actionError ? <Notice message={actionError} title="Ação não concluída" tone="danger" /> : null}
+          {actionSuccess ? <Notice message={actionSuccess} tone="success" /> : null}
           <View style={styles.detailHeader}>
             <View style={styles.detailTitleBlock}>
               <Text style={styles.detailTitle}>Pedido #{freshSelectedRequest.id}</Text>
@@ -468,17 +492,22 @@ export function AdminRequestsScreen() {
 
           <RequestTimeline events={freshSelectedRequest.timeline} limit={5} title="Histórico do pedido" />
 
-          <ReschedulePanel
+          {canCompleteSelectedRequest ? <PremiumButton label={rescheduleOpen ? "Ocultar remarcação" : "Remarcar horário"} variant="secondary" disabled={actionLoading} onPress={() => setRescheduleOpen((current) => !current)} /> : null}
+          {canCompleteSelectedRequest && rescheduleOpen ? <ReschedulePanel
+            key={freshSelectedRequest.id}
             currentSlotKey={freshSelectedRequest.slotKey}
             onConfirm={async (slot) => {
+              setActionLoading(true);
+              try {
               await rescheduleRequest(
                 freshSelectedRequest.id,
                 slot.id,
                 `Pedido remarcado para ${slot.label} pelo administrativo.`
               );
               setActionSuccess("Pedido remarcado com sucesso.");
+              } finally { setActionLoading(false); }
             }}
-          />
+          /> : null}
 
           <View style={styles.actions}>
             {canTransition(freshSelectedRequest.status, "under_review") ? (
@@ -516,7 +545,7 @@ export function AdminRequestsScreen() {
               <PremiumButton
               disabled={actionLoading}
               icon="checkmark-circle-outline"
-              label="Aprovar"
+              label="Confirmar pedido"
               onPress={() =>
                 confirmRequestStatus("approved", () =>
                   changeStatus(freshSelectedRequest.id, "approved", {
@@ -560,6 +589,9 @@ export function AdminRequestsScreen() {
             ) : null}
           </View>
         </PremiumSurface>
+        </ScrollView>
+        </View>
+        </Modal>
       ) : (
         <EmptyState
           icon="hand-left-outline"
@@ -572,6 +604,19 @@ export function AdminRequestsScreen() {
 }
 
 const styles = StyleSheet.create({
+  dateGroup: { gap: theme.spacing.sm },
+  narrowCard: { flexBasis: "46%", maxWidth: "48%" },
+  wideCard: { flexBasis: "30%", maxWidth: "32%" },
+  dateHeading: { ...theme.typography.caption, color: theme.colors.graphite, fontWeight: "700", marginTop: theme.spacing.md },
+  cardGrid: { flexDirection: "row", flexWrap: "wrap", gap: theme.spacing.sm },
+  requestCard: { flexGrow: 1, flexBasis: 210, maxWidth: "100%", minHeight: 190, padding: theme.spacing.md, borderRadius: theme.radius.lg, borderWidth: 1, borderColor: theme.colors.line, backgroundColor: theme.colors.ivoryGlass, gap: theme.spacing.sm, ...theme.shadows.soft },
+  cardTop: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: theme.spacing.xs },
+  cardTime: { fontSize: 27, fontWeight: "700", color: theme.colors.ink },
+  cardName: { ...theme.typography.section, color: theme.colors.ink },
+  cardService: { ...theme.typography.caption, color: theme.colors.graphite },
+  cardLink: { ...theme.typography.caption, color: theme.colors.roseGoldDark, marginTop: "auto" },
+  modalOverlay: { flex: 1, backgroundColor: "rgba(31,26,24,0.55)" },
+  modalScroll: { padding: theme.spacing.md, alignItems: "center" },
   filters: {
     gap: theme.spacing.md,
     marginBottom: theme.spacing.lg
@@ -619,6 +664,8 @@ const styles = StyleSheet.create({
     gap: theme.spacing.md
   },
   detailPanel: {
+    width: "100%",
+    maxWidth: 680,
     gap: theme.spacing.md,
     marginTop: theme.spacing.lg
   },
